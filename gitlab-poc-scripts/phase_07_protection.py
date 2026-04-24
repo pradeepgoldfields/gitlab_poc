@@ -2,7 +2,7 @@
 """
 Phase 7 — Branch / Tag / Environment Protection + CI bootstrap
 
-- Protects main on payments/api and trade/orders
+- Protects main on domain-a/proj-1 and domain-b/proj-1
 - Protects v* tags
 - Creates and protects staging and prod environments
 - Adds a baseline .gitlab-ci.yml
@@ -21,8 +21,8 @@ def main():
 
     gl = GitLabClient()
 
-    # Commit baseline .gitlab-ci.yml to payments/api and CODEOWNERS
-    api_path = f"{config.TOP_GROUP}/live-production/payments/api"
+    # Commit baseline .gitlab-ci.yml to domain-a/proj-1 and CODEOWNERS
+    api_path = f"{config.TOP_GROUP}/live-production/domain-a/proj-1"
     step(f"Committing baseline .gitlab-ci.yml and CODEOWNERS to {api_path}")
     try:
         gl.upsert_file(api_path, "main", ".gitlab-ci.yml", config.SAMPLE_CI_YAML,

@@ -95,14 +95,14 @@ def _live_verify(gl: GitLabClient, records: list[dict] | None = None) -> list[di
 
     # 4. restricted is private
     try:
-        g = gl.find_group(f"{top}/live-production/payments/restricted")
+        g = gl.find_group(f"{top}/live-production/domain-a/restricted")
         add("restricted/ is Private", bool(g) and g.get("visibility") == "private",
             f"visibility={g.get('visibility') if g else 'missing'}")
     except Exception as e:
         add("restricted/ is Private", False, str(e))
 
-    # 5. Branch protection on payments/api
-    api_path = f"{top}/live-production/payments/api"
+    # 5. Branch protection on domain-a/proj-1
+    api_path = f"{top}/live-production/domain-a/proj-1"
     try:
         encoded = quote(api_path, safe="")
         mb = gl.get(f"/projects/{encoded}/protected_branches/main")
@@ -142,17 +142,17 @@ def _live_verify(gl: GitLabClient, records: list[dict] | None = None) -> list[di
         except Exception as e:
             add("Approach 1 cleanup", False, str(e))
 
-    # 8. Approach 2 trade has all 4 SailPoint shares
-    trade = f"{top}/live-production/trade"
+    # 8. Approach 2 domain-b has all 4 SailPoint shares
+    domain_b_path = f"{top}/live-production/domain-b"
     try:
-        g = gl.find_group(trade)
+        g = gl.find_group(domain_b_path)
         shares = [s.get("group_full_path", "") for s in (g or {}).get("shared_with_groups", [])]
-        for want in ("gl-trade-read", "gl-trade-dev", "gl-trade-maint", "gl-trade-owner"):
-            add(f"trade shared with {want}", any(want in s for s in shares))
+        for want in ("gl-domain-b-read", "gl-domain-b-dev", "gl-domain-b-maint", "gl-domain-b-owner"):
+            add(f"domain-b shared with {want}", any(want in s for s in shares))
     except Exception as e:
         add("Approach 2 sharing", False, str(e))
 
-    # 9. P2P custom-role groups shared with payments/api.
+    # 9. IAM custom-role groups shared with domain-a/proj-1.
     # The IAM-sim group names contain "Promoter" / "Operator" / "SecurityManager"
     # literally (they simulate the LDAP-side group names, NOT the GitLab custom
     # role names) — so they are NOT prefixed.
@@ -160,7 +160,7 @@ def _live_verify(gl: GitLabClient, records: list[dict] | None = None) -> list[di
         proj = gl.find_project(api_path)
         shares = [s.get("group_full_path", "") for s in (proj or {}).get("shared_with_groups", [])]
         for want in ("Promoter", "Operator", "SecurityManager"):
-            add(f"P2P {want} group shared with payments/api",
+            add(f"IAM {want} group shared with domain-a/proj-1",
                 any(want in s for s in shares))
     except Exception as e:
         add("Custom role group shares", False, str(e))

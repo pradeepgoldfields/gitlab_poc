@@ -90,16 +90,16 @@ PLATFORM_GROUP = "platform"
 # Domains created under live-production (for the PoC)
 # ---------------------------------------------------------------------------
 DOMAINS = {
-    "live-production": ["payments", "trade"],
-    "live-cloud-landing-zone": ["payments"],
-    "non-live-enterprise": ["payments"],
+    "live-production": ["domain-a", "domain-b"],
+    "live-cloud-landing-zone": ["domain-a"],
+    "non-live-enterprise": ["domain-a"],
 }
 
 # Projects per domain (only for the main test domains; extend as needed)
 PROJECTS = {
-    "live-production/payments":            ["api", "ui", "batch"],
-    "live-production/payments/restricted": ["payments-secrets"],
-    "live-production/trade":               ["orders", "settlements", "reconciliation"],
+    "live-production/domain-a":            ["proj-1", "proj-2", "proj-3"],
+    "live-production/domain-a/restricted": ["restricted-proj-1"],
+    "live-production/domain-b":            ["proj-1", "proj-2", "proj-3"],
     "platform":                            ["ci-templates"],
 }
 
@@ -156,32 +156,32 @@ TEST_USER_DEFAULT_PASSWORD = os.environ.get(
 # Simulated IAM group structure (SSCAM / SailPoint / P2P)
 # ---------------------------------------------------------------------------
 SSCAM_GROUPS = [
-    "payments-api_w",
-    "payments-api_r",
-    "payments-ui_w",
-    "payments-ui_r",
+    "domain-a-proj-1_w",
+    "domain-a-proj-1_r",
+    "domain-a-proj-2_w",
+    "domain-a-proj-2_r",
 ]
 
 SAILPOINT_GROUPS = [
-    "gl-payments-read",
-    "gl-payments-dev",
-    "gl-payments-maint",
-    "gl-payments-owner",
-    "gl-trade-read",
-    "gl-trade-dev",
-    "gl-trade-maint",
-    "gl-trade-owner",
+    "gl-domain-a-read",
+    "gl-domain-a-dev",
+    "gl-domain-a-maint",
+    "gl-domain-a-owner",
+    "gl-domain-b-read",
+    "gl-domain-b-dev",
+    "gl-domain-b-maint",
+    "gl-domain-b-owner",
     "gl-restricted-read",
 ]
 
 P2P_GROUPS = [
-    "P2P_GS_DevOps_payments_Promoter",
-    "P2P_GS_DevOps_payments_Operator",
-    "P2P_GS_DevOps_payments_SecurityManager",
-    "P2P_GS_DevOps_payments_Maintainer",
-    "P2P_GS_DevOps_payments_Developer",
-    "P2P_GS_DevOps_payments_Reporter",
-    "P2P_GS_DevOps_Owner",
+    "IAM_DevOps_domain-a_Promoter",
+    "IAM_DevOps_domain-a_Operator",
+    "IAM_DevOps_domain-a_SecurityManager",
+    "IAM_DevOps_domain-a_Maintainer",
+    "IAM_DevOps_domain-a_Developer",
+    "IAM_DevOps_domain-a_Reporter",
+    "IAM_DevOps_Owner",
 ]
 
 # ---------------------------------------------------------------------------
@@ -191,23 +191,23 @@ P2P_GROUPS = [
 _U = USER_BY_SHORT
 IAM_MEMBERSHIPS = {
     # SSCAM (Approach 1)
-    "iam-sim/sscam/payments-api_w": [_U["alice"]],
-    "iam-sim/sscam/payments-api_r": [_U["rita"]],
+    "iam-sim/sscam/domain-a-proj-1_w": [_U["alice"]],
+    "iam-sim/sscam/domain-a-proj-1_r": [_U["rita"]],
 
     # SailPoint (Approach 2)
-    "iam-sim/sailpoint/gl-payments-dev":    [_U["alice"]],
-    "iam-sim/sailpoint/gl-payments-read":   [_U["rita"]],
-    "iam-sim/sailpoint/gl-payments-maint":  [_U["bob"]],
-    "iam-sim/sailpoint/gl-trade-dev":       [_U["alice"]],
+    "iam-sim/sailpoint/gl-domain-a-dev":    [_U["alice"]],
+    "iam-sim/sailpoint/gl-domain-a-read":   [_U["rita"]],
+    "iam-sim/sailpoint/gl-domain-a-maint":  [_U["bob"]],
+    "iam-sim/sailpoint/gl-domain-b-dev":    [_U["alice"]],
     "iam-sim/sailpoint/gl-restricted-read": [_U["con"]],
 
-    # P2P DevOps
-    "iam-sim/p2p/P2P_GS_DevOps_payments_Promoter":        [_U["paul"]],
-    "iam-sim/p2p/P2P_GS_DevOps_payments_Operator":        [_U["carol"]],
-    "iam-sim/p2p/P2P_GS_DevOps_payments_SecurityManager": [_U["sam"]],
-    "iam-sim/p2p/P2P_GS_DevOps_payments_Maintainer":      [_U["bob"]],
-    "iam-sim/p2p/P2P_GS_DevOps_payments_Developer":       [_U["alice"]],
-    "iam-sim/p2p/P2P_GS_DevOps_payments_Reporter":        [_U["rita"]],
+    # P2P DevOps (renamed from P2P_GS_DevOps_* to IAM_DevOps_*)
+    "iam-sim/p2p/IAM_DevOps_domain-a_Promoter":        [_U["paul"]],
+    "iam-sim/p2p/IAM_DevOps_domain-a_Operator":        [_U["carol"]],
+    "iam-sim/p2p/IAM_DevOps_domain-a_SecurityManager": [_U["sam"]],
+    "iam-sim/p2p/IAM_DevOps_domain-a_Maintainer":      [_U["bob"]],
+    "iam-sim/p2p/IAM_DevOps_domain-a_Developer":       [_U["alice"]],
+    "iam-sim/p2p/IAM_DevOps_domain-a_Reporter":        [_U["rita"]],
 }
 
 # Users granted Minimal Access at the top-level group
@@ -282,33 +282,33 @@ CUSTOM_ROLES = [
 # Approach 1 (Hybrid) — sharing plan
 # ---------------------------------------------------------------------------
 APPROACH_1_SHARES = [
-    # Share SSCAM project-level groups with payments/api
+    # Share SSCAM project-level groups with domain-a/proj-1
     {
-        "target": "live-production/payments/api",
-        "shared_group": "iam-sim/sscam/payments-api_w",
+        "target": "live-production/domain-a/proj-1",
+        "shared_group": "iam-sim/sscam/domain-a-proj-1_w",
         "role": "developer",
     },
     {
-        "target": "live-production/payments/api",
-        "shared_group": "iam-sim/sscam/payments-api_r",
+        "target": "live-production/domain-a/proj-1",
+        "shared_group": "iam-sim/sscam/domain-a-proj-1_r",
         "role": "reporter",
     },
     # Optional product-level share
     {
-        "target": "live-production/payments",
-        "shared_group": "iam-sim/sailpoint/gl-payments-dev",
+        "target": "live-production/domain-a",
+        "shared_group": "iam-sim/sailpoint/gl-domain-a-dev",
         "role": "developer",
     },
     # Restricted reader
     {
-        "target": "live-production/payments/restricted",
+        "target": "live-production/domain-a/restricted",
         "shared_group": "iam-sim/sailpoint/gl-restricted-read",
         "role": "reporter",
     },
-    # Maintainer group on payments domain
+    # Maintainer group on domain-a domain
     {
-        "target": "live-production/payments",
-        "shared_group": "iam-sim/p2p/P2P_GS_DevOps_payments_Maintainer",
+        "target": "live-production/domain-a",
+        "shared_group": "iam-sim/p2p/IAM_DevOps_domain-a_Maintainer",
         "role": "maintainer",
     },
 ]
@@ -317,10 +317,10 @@ APPROACH_1_SHARES = [
 # Approach 2 (Target) — sharing plan
 # ---------------------------------------------------------------------------
 APPROACH_2_SHARES = [
-    {"target": "live-production/trade", "shared_group": "iam-sim/sailpoint/gl-trade-read",  "role": "reporter"},
-    {"target": "live-production/trade", "shared_group": "iam-sim/sailpoint/gl-trade-dev",   "role": "developer"},
-    {"target": "live-production/trade", "shared_group": "iam-sim/sailpoint/gl-trade-maint", "role": "maintainer"},
-    {"target": "live-production/trade", "shared_group": "iam-sim/sailpoint/gl-trade-owner", "role": "owner"},
+    {"target": "live-production/domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-read",  "role": "reporter"},
+    {"target": "live-production/domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-dev",   "role": "developer"},
+    {"target": "live-production/domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-maint", "role": "maintainer"},
+    {"target": "live-production/domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-owner", "role": "owner"},
 ]
 
 # ---------------------------------------------------------------------------
@@ -329,14 +329,14 @@ APPROACH_2_SHARES = [
 PROTECTION_PLAN = {
     "protected_branches": [
         {
-            "project": "live-production/payments/api",
+            "project": "live-production/domain-a/proj-1",
             "name": "main",
             "push_access_level": 0,           # No one
             "merge_access_level": 40,         # Maintainer
             "code_owner_approval_required": True,
         },
         {
-            "project": "live-production/trade/orders",
+            "project": "live-production/domain-b/proj-1",
             "name": "main",
             "push_access_level": 0,
             "merge_access_level": 40,
@@ -344,19 +344,19 @@ PROTECTION_PLAN = {
         },
     ],
     "protected_tags": [
-        {"project": "live-production/payments/api",    "name": "v*", "create_access_level": 40},
-        {"project": "live-production/trade/orders",    "name": "v*", "create_access_level": 40},
+        {"project": "live-production/domain-a/proj-1", "name": "v*", "create_access_level": 40},
+        {"project": "live-production/domain-b/proj-1", "name": "v*", "create_access_level": 40},
     ],
     # Protected environments require the env to exist first — the script handles that.
     "protected_environments": [
         {
-            "project": "live-production/payments/api",
+            "project": "live-production/domain-a/proj-1",
             "name": "staging",
             "deploy_access_levels": [{"access_level": 30}],   # Developer+
             "approval_rules": [],
         },
         {
-            "project": "live-production/payments/api",
+            "project": "live-production/domain-a/proj-1",
             "name": "prod",
             # Deploy restricted to Carol only (user-specific); will be set by username lookup
             "deploy_access_users": [_U["carol"]],
@@ -368,7 +368,7 @@ PROTECTION_PLAN = {
 }
 
 # ---------------------------------------------------------------------------
-# Sample .gitlab-ci.yml for payments/api (Phase 7 bootstraps this)
+# Sample .gitlab-ci.yml for domain-a/proj-1 (Phase 7 bootstraps this)
 # ---------------------------------------------------------------------------
 SAMPLE_CI_YAML = """\
 stages:
@@ -420,9 +420,9 @@ adhoc_task:
 """
 
 SAMPLE_CODEOWNERS = f"""\
-*                @{TOP_GROUP}/iam-sim/p2p/P2P_GS_DevOps_payments_Maintainer
-/infra/          @{TOP_GROUP}/iam-sim/p2p/P2P_GS_DevOps_payments_SecurityManager
-/.gitlab-ci.yml  @{TOP_GROUP}/iam-sim/p2p/P2P_GS_DevOps_payments_Maintainer
+*                @{TOP_GROUP}/iam-sim/p2p/IAM_DevOps_domain-a_Maintainer
+/infra/          @{TOP_GROUP}/iam-sim/p2p/IAM_DevOps_domain-a_SecurityManager
+/.gitlab-ci.yml  @{TOP_GROUP}/iam-sim/p2p/IAM_DevOps_domain-a_Maintainer
 """
 
 # ---------------------------------------------------------------------------

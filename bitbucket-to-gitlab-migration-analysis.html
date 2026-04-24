@@ -101,19 +101,19 @@
   <rect x="30" y="40" width="340" height="350" rx="8" fill="#fffef7" stroke="#ff991f" stroke-width="1"/>
 
   <rect x="50" y="60" width="300" height="36" rx="5" class="bb"/>
-  <text x="200" y="82" class="lbl">Project: PAY (Payments)</text>
+  <text x="200" y="82" class="lbl">Project: DOM (domain-a)</text>
 
   <rect x="70" y="110" width="260" height="30" rx="4" class="bb"/>
-  <text x="200" y="130" class="lbl-small">Repo: payments-api</text>
+  <text x="200" y="130" class="lbl-small">Repo: domain-a-api</text>
   <rect x="70" y="145" width="260" height="30" rx="4" class="bb"/>
-  <text x="200" y="165" class="lbl-small">Repo: payments-ui</text>
+  <text x="200" y="165" class="lbl-small">Repo: domain-a-ui</text>
   <rect x="70" y="180" width="260" height="30" rx="4" class="bb"/>
-  <text x="200" y="200" class="lbl-small">Repo: payments-batch</text>
+  <text x="200" y="200" class="lbl-small">Repo: domain-a-batch</text>
 
   <rect x="50" y="230" width="300" height="30" rx="4" fill="#deebff" stroke="#0052cc"/>
-  <text x="200" y="250" class="lbl-small">LDAP: payments-api_w / payments-api_r</text>
+  <text x="200" y="250" class="lbl-small">LDAP: domain-a-proj-1_w / domain-a-proj-1_r</text>
   <rect x="50" y="265" width="300" height="30" rx="4" fill="#deebff" stroke="#0052cc"/>
-  <text x="200" y="285" class="lbl-small">LDAP: payments-ui_w / payments-ui_r</text>
+  <text x="200" y="285" class="lbl-small">LDAP: domain-a-proj-2_w / domain-a-proj-2_r</text>
 
   <rect x="50" y="310" width="300" height="28" rx="4" fill="#f4f5f7" stroke="#6b778c"/>
   <text x="200" y="328" class="lbl-small">Bitbucket Pipelines (bitbucket-pipelines.yml)</text>
@@ -130,7 +130,7 @@
   <rect x="580" y="40" width="340" height="350" rx="8" fill="#f5fff9" stroke="#00875a" stroke-width="1"/>
 
   <rect x="600" y="60" width="300" height="36" rx="5" class="gl"/>
-  <text x="750" y="82" class="lbl">acme/live-production/payments/</text>
+  <text x="750" y="82" class="lbl">acme/live-production/domain-a/</text>
 
   <rect x="620" y="110" width="260" height="30" rx="4" class="gl"/>
   <text x="750" y="130" class="lbl-small">api (project)</text>
@@ -142,7 +142,7 @@
   <rect x="600" y="230" width="300" height="30" rx="4" fill="#deebff" stroke="#0052cc"/>
   <text x="750" y="250" class="lbl-small">Approach 1: SSCAM _w / _r (initial)</text>
   <rect x="600" y="265" width="300" height="30" rx="4" fill="#deebff" stroke="#0052cc"/>
-  <text x="750" y="285" class="lbl-small">Approach 2: gl-payments-dev / -read (target)</text>
+  <text x="750" y="285" class="lbl-small">Approach 2: gl-domain-a-dev / -read (target)</text>
 
   <rect x="600" y="310" width="300" height="28" rx="4" fill="#f4f5f7" stroke="#6b778c"/>
   <text x="750" y="328" class="lbl-small">GitLab CI/CD (.gitlab-ci.yml + templates)</text>
@@ -161,7 +161,7 @@
 <table>
 <thead><tr><th>Bitbucket</th><th>GitLab</th><th>Notes / risk</th></tr></thead>
 <tbody>
-<tr><td>Project (e.g. <code>PAY</code>)</td><td>Group / subgroup (e.g. <code>payments/</code>)</td><td>Direct mapping. In GitLab the group hierarchy is deeper — the deployment-zone layer is added above the domain.</td></tr>
+<tr><td>Project (e.g. <code>PAY</code>)</td><td>Group / subgroup (e.g. <code>domain-a/</code>)</td><td>Direct mapping. In GitLab the group hierarchy is deeper — the deployment-zone layer is added above the domain.</td></tr>
 <tr><td>Repository</td><td>Project</td><td>Direct 1:1.</td></tr>
 <tr><td>Branch permissions</td><td>Protected branches</td><td>Rules structure differs. Bitbucket "prevent rewriting" maps to GitLab "disallow force push".</td></tr>
 <tr><td>Default reviewers</td><td>CODEOWNERS + approval rules</td><td>Requires rewrite. A <code>CODEOWNERS</code> file lives in the repo; approval rules are project settings.</td></tr>
@@ -307,9 +307,9 @@
 </ul>
 
 <pre><code># Per-repo migration script (sketch)
-git clone --mirror https://bitbucket.example.com/scm/PAY/payments-api.git
-cd payments-api.git
-git remote set-url --push origin https://gitlab.example.com/acme/live-production/payments/api.git
+git clone --mirror https://bitbucket.example.com/scm/PAY/domain-a-api.git
+cd domain-a-api.git
+git remote set-url --push origin https://gitlab.example.com/acme/live-production/domain-a/proj-1.git
 git push --mirror
 # Then verify: branch + tag counts, LFS object counts, sample-clone checks
 </code></pre>
@@ -354,10 +354,10 @@ git push --mirror
   <!-- Step 1 -->
   <rect x="30" y="60" width="200" height="240" rx="6" class="state"/>
   <text x="130" y="50" class="hdr">Step 1 — Bitbucket (today)</text>
-  <text x="130" y="90" class="lbl">payments-api repo</text>
+  <text x="130" y="90" class="lbl">domain-a-api repo</text>
   <text x="130" y="120" class="lbl-small">Access via LDAP groups:</text>
-  <text x="130" y="140" class="lbl-small">payments-api_w (write)</text>
-  <text x="130" y="158" class="lbl-small">payments-api_r (read)</text>
+  <text x="130" y="140" class="lbl-small">domain-a-proj-1_w (write)</text>
+  <text x="130" y="158" class="lbl-small">domain-a-proj-1_r (read)</text>
   <text x="130" y="190" class="lbl-small">Managed in SSCAM</text>
   <text x="130" y="210" class="lbl-small">(per-repo groups)</text>
   <text x="130" y="250" class="lbl-small">Inner sourcing: manual,</text>
@@ -368,12 +368,12 @@ git push --mirror
   <!-- Step 2 — Approach 1 -->
   <rect x="265" y="60" width="220" height="280" rx="6" class="state-mid"/>
   <text x="375" y="50" class="hdr">Step 2 — Approach 1 in GitLab</text>
-  <text x="375" y="90" class="lbl">payments/api project</text>
+  <text x="375" y="90" class="lbl">domain-a/proj-1 project</text>
   <text x="375" y="120" class="lbl-small">SAME LDAP groups shared:</text>
-  <text x="375" y="140" class="lbl-small">payments-api_w → Developer</text>
-  <text x="375" y="158" class="lbl-small">payments-api_r → Reporter</text>
+  <text x="375" y="140" class="lbl-small">domain-a-proj-1_w → Developer</text>
+  <text x="375" y="158" class="lbl-small">domain-a-proj-1_r → Reporter</text>
   <text x="375" y="190" class="lbl-small">(shared at project level)</text>
-  <text x="375" y="215" class="lbl-small">Optional: gl-payments-dev</text>
+  <text x="375" y="215" class="lbl-small">Optional: gl-domain-a-dev</text>
   <text x="375" y="233" class="lbl-small">shared at domain for early</text>
   <text x="375" y="251" class="lbl-small">group-level use cases</text>
   <text x="375" y="285" class="lbl-small">Inner sourcing: enabled</text>
@@ -385,13 +385,13 @@ git push --mirror
   <!-- Step 3 — Parallel -->
   <rect x="520" y="60" width="220" height="280" rx="6" class="state-mid"/>
   <text x="630" y="50" class="hdr">Step 3 — Dual running</text>
-  <text x="630" y="90" class="lbl">payments/api project</text>
+  <text x="630" y="90" class="lbl">domain-a/proj-1 project</text>
   <text x="630" y="120" class="lbl-small">Old (retained):</text>
-  <text x="630" y="140" class="lbl-small">payments-api_w → Dev</text>
-  <text x="630" y="158" class="lbl-small">payments-api_r → Rep</text>
+  <text x="630" y="140" class="lbl-small">domain-a-proj-1_w → Dev</text>
+  <text x="630" y="158" class="lbl-small">domain-a-proj-1_r → Rep</text>
   <text x="630" y="190" class="lbl-small">New (added at domain):</text>
-  <text x="630" y="210" class="lbl-small">gl-payments-dev → Dev</text>
-  <text x="630" y="228" class="lbl-small">gl-payments-read → Rep</text>
+  <text x="630" y="210" class="lbl-small">gl-domain-a-dev → Dev</text>
+  <text x="630" y="228" class="lbl-small">gl-domain-a-read → Rep</text>
   <text x="630" y="260" class="lbl-small">Users have access via</text>
   <text x="630" y="278" class="lbl-small">BOTH paths — no gaps</text>
   <text x="630" y="308" class="lbl-small">Move owners to new groups,</text>
@@ -402,13 +402,13 @@ git push --mirror
   <!-- Step 4 — Approach 2 -->
   <rect x="775" y="60" width="130" height="280" rx="6" class="state-end"/>
   <text x="840" y="50" class="hdr">Step 4 — Approach 2</text>
-  <text x="840" y="95" class="lbl-small">payments/api</text>
+  <text x="840" y="95" class="lbl-small">domain-a/proj-1</text>
   <text x="840" y="125" class="lbl-small">Project-level</text>
   <text x="840" y="143" class="lbl-small">members: NONE</text>
   <text x="840" y="173" class="lbl-small">Inherited from</text>
   <text x="840" y="191" class="lbl-small">domain:</text>
-  <text x="840" y="211" class="lbl-small">gl-payments-dev</text>
-  <text x="840" y="229" class="lbl-small">gl-payments-read</text>
+  <text x="840" y="211" class="lbl-small">gl-domain-a-dev</text>
+  <text x="840" y="229" class="lbl-small">gl-domain-a-read</text>
   <text x="840" y="265" class="lbl-small">_w / _r removed</text>
   <text x="840" y="295" class="lbl-small" style="font-weight:600">Done</text>
 </svg>
@@ -421,8 +421,8 @@ git push --mirror
 
 <ul>
   <li>For <strong>Approach 1</strong> onboarding, bind the existing <code>&lt;app&gt;_w</code> / <code>&lt;app&gt;_r</code> LDAP groups to the target GitLab <em>project</em> at Developer and Reporter respectively.</li>
-  <li>For <strong>Approach 2</strong> convergence, bind <code>P2P_GS_DevOps_&lt;group&gt;_Developer</code> / <code>_Reporter</code> / <code>_Maintainer</code> / <code>_Owner</code> LDAP groups to the target GitLab <em>group</em> (domain level) at the corresponding role.</li>
-  <li>Custom roles (Promoter, Operator, Security Manager) bind <code>P2P_GS_DevOps_&lt;group&gt;_Promoter</code> / <code>_Operator</code> / <code>_SecurityManager</code> at group scope.</li>
+  <li>For <strong>Approach 2</strong> convergence, bind <code>IAM_DevOps_&lt;group&gt;_Developer</code> / <code>_Reporter</code> / <code>_Maintainer</code> / <code>_Owner</code> LDAP groups to the target GitLab <em>group</em> (domain level) at the corresponding role.</li>
+  <li>Custom roles (Promoter, Operator, Security Manager) bind <code>IAM_DevOps_&lt;group&gt;_Promoter</code> / <code>_Operator</code> / <code>_SecurityManager</code> at group scope.</li>
   <li><strong>Audit:</strong> export the membership of each newly-bound group before cutover; verify post-cutover that the set of resolved GitLab memberships matches.</li>
 </ul>
 

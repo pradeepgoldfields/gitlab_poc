@@ -44,7 +44,7 @@ def main():
     alice = client_for_env("POC_ALICE_TOKEN")
     bob = client_for_env("POC_BOB_TOKEN")
 
-    api = f"{config.TOP_GROUP}/live-production/payments/api"
+    api = f"{config.TOP_GROUP}/live-production/domain-a/proj-1"
 
     # --------------------------------------------------------
     # Scenario A.1 — Feature branch pipeline does not expose PROD_DEPLOY_TOKEN
@@ -84,7 +84,7 @@ def main():
     # --------------------------------------------------------
     # Scenario D — CI_JOB_TOKEN allowlist
     # --------------------------------------------------------
-    step("Scenario D — verifying CI_JOB_TOKEN allowlist on payments/api…")
+    step("Scenario D — verifying CI_JOB_TOKEN allowlist on domain-a/proj-1…")
     try:
         encoded = quote(api, safe="")
         # List job token scopes (inbound)
@@ -109,7 +109,7 @@ def main():
       • As Carol, play it. Should succeed and wait for Bob's approval.
 
     Scenario C — Fork pipeline isolation
-      • As Dan, fork payments/api, modify the CI yaml to echo PROD_DEPLOY_TOKEN,
+      • As Dan, fork domain-a/proj-1, modify the CI yaml to echo PROD_DEPLOY_TOKEN,
         open MR from fork. Bob approves pipeline to run. Verify token is empty.
 
     Scenario E — Runner scoping
@@ -120,14 +120,14 @@ def main():
     Scenario F — Developer cannot edit CI settings (already covered by Phase 8 T2, T3).
 
     Scenario G — Scheduled pipeline ownership
-      • As Bob, create a schedule on payments/api.
+      • As Bob, create a schedule on domain-a/proj-1.
       • Reduce Bob's role to Reporter on the IAM group; the next scheduled run
         should fail privileged jobs.
       • Transfer schedule ownership to another Maintainer to restore.
 
     Scenario H — Group/project variable inheritance
-      • Set a variable at live-production/payments; verify inherited by all child projects.
-      • Override at payments/api with a different value; verify override.
+      • Set a variable at live-production/domain-a; verify inherited by all child projects.
+      • Override at domain-a/proj-1 with a different value; verify override.
 
     Scenario I — Environment-scoped same-key variables
       • Add API_KEY=staging-val scoped to staging; API_KEY=prod-val scoped to prod.

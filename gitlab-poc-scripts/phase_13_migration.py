@@ -2,15 +2,15 @@
 """
 Phase 13 — Migration from Approach 1 to Approach 2
 
-Migrates payments/api from Bitbucket-style project-level SSCAM sharing to
+Migrates domain-a/proj-1 from Bitbucket-style project-level SSCAM sharing to
 domain-level SailPoint sharing, with no access outage.
 
 Steps:
-  1. Capture before-state of access on payments/api
+  1. Capture before-state of access on domain-a/proj-1
   2. Confirm parallel state (SailPoint already shared at domain in Phase 5)
   3. Remove SSCAM project-level shares
   4. Capture after-state
-  5. Prompt break-test: temporarily remove Alice from gl-payments-dev, verify
+  5. Prompt break-test: temporarily remove Alice from gl-domain-a-dev, verify
      access is revoked (API), then restore
 
 Usage: python3 phase_13_migration.py
@@ -48,21 +48,21 @@ def main():
 
     gl = GitLabClient()
 
-    api = f"{config.TOP_GROUP}/live-production/payments/api"
+    api = f"{config.TOP_GROUP}/live-production/domain-a/proj-1"
 
     # Step 1 — Before
-    step("Step 1 — Capturing before-state on payments/api")
+    step("Step 1 — Capturing before-state on domain-a/proj-1")
     print("  Alice's access paths:")
     summarise_access(gl, api, "poc-alice")
     print("  Rita's access paths:")
     summarise_access(gl, api, "poc-rita")
 
-    # Step 2 — Parallel state (no action needed, gl-payments-dev is already shared)
+    # Step 2 — Parallel state (no action needed, gl-domain-a-dev is already shared)
     step("Step 2 — Parallel state already in place (SailPoint domain-level share from Phase 5)")
 
     # Step 3 — Remove SSCAM project-level shares
-    step("Step 3 — Removing SSCAM project-level shares (payments-api_w, payments-api_r)")
-    for group in ["iam-sim/sscam/payments-api_w", "iam-sim/sscam/payments-api_r"]:
+    step("Step 3 — Removing SSCAM project-level shares (domain-a-proj-1_w, domain-a-proj-1_r)")
+    for group in ["iam-sim/sscam/domain-a-proj-1_w", "iam-sim/sscam/domain-a-proj-1_r"]:
         full = f"{config.TOP_GROUP}/{group}"
         try:
             gl.unshare_project_from_group(api, full)
@@ -71,7 +71,7 @@ def main():
             warn(f"Could not unshare {full}: {e}")
 
     # Step 4 — After
-    step("Step 4 — Capturing after-state on payments/api")
+    step("Step 4 — Capturing after-state on domain-a/proj-1")
     print("  Alice's access paths:")
     summarise_access(gl, api, "poc-alice")
     print("  Rita's access paths:")
@@ -85,10 +85,10 @@ def main():
 
     # Break test execution
     alice = gl.find_user_by_username("poc-alice")
-    dev_group = f"{config.TOP_GROUP}/iam-sim/sailpoint/gl-payments-dev"
+    dev_group = f"{config.TOP_GROUP}/iam-sim/sailpoint/gl-domain-a-dev"
     encoded_group = quote(dev_group, safe="")
 
-    step("Removing Alice from gl-payments-dev")
+    step("Removing Alice from gl-domain-a-dev")
     try:
         gl.delete(f"/groups/{encoded_group}/members/{alice['id']}")
         done("Alice removed")
@@ -100,7 +100,7 @@ def main():
     step("Verifying Alice lost access…")
     summarise_access(gl, api, "poc-alice")
 
-    step("Restoring Alice's membership in gl-payments-dev")
+    step("Restoring Alice's membership in gl-domain-a-dev")
     try:
         gl.post(
             f"/groups/{encoded_group}/members",

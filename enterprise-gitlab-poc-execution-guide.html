@@ -260,27 +260,27 @@ Inside <code>acme-poc</code>, create the following subgroups. For each: click <s
 <div class="step">
 Under <code>live-production</code>, create:
 <ul>
-  <li><code>payments</code> (Internal)</li>
-  <li><code>trade</code> (Internal)</li>
+  <li><code>domain-a</code> (Internal)</li>
+  <li><code>domain-b</code> (Internal)</li>
 </ul>
 
 Under <code>live-cloud-landing-zone</code>, create:
 <ul>
-  <li><code>payments</code> (Internal) — same domain name, different zone; this is intentional and tests zone isolation</li>
+  <li><code>domain-a</code> (Internal) — same domain name, different zone; this is intentional and tests zone isolation</li>
 </ul>
 
 Under <code>non-live-enterprise</code>, create:
 <ul>
-  <li><code>payments</code> (Internal)</li>
+  <li><code>domain-a</code> (Internal)</li>
 </ul>
 </div>
 
 <h3>Step 2.4 — Create restricted subgroups</h3>
 
 <div class="step">
-Inside <code>live-production/payments/</code>, create subgroup <code>restricted</code>. Set visibility to <strong>Private</strong>.
+Inside <code>live-production/domain-a/</code>, create subgroup <code>restricted</code>. Set visibility to <strong>Private</strong>.
 
-<br><br>Repeat for <code>live-production/trade/restricted</code>.
+<br><br>Repeat for <code>live-production/domain-b/restricted</code>.
 </div>
 
 <div class="callout-warn">
@@ -290,23 +290,23 @@ Inside <code>live-production/payments/</code>, create subgroup <code>restricted<
 <h3>Step 2.5 — Create projects</h3>
 
 <div class="step">
-Under <code>live-production/payments/</code>, create blank projects (each initialised with a README):
+Under <code>live-production/domain-a/</code>, create blank projects (each initialised with a README):
 <ul>
   <li><code>api</code></li>
   <li><code>ui</code></li>
   <li><code>batch</code></li>
 </ul>
 
-Under <code>live-production/payments/restricted/</code>:
+Under <code>live-production/domain-a/restricted/</code>:
 <ul>
-  <li><code>payments-secrets</code></li>
+  <li><code>restricted-proj-1</code></li>
 </ul>
 
-Under <code>live-production/trade/</code>:
+Under <code>live-production/domain-b/</code>:
 <ul>
-  <li><code>orders</code></li>
-  <li><code>settlements</code></li>
-  <li><code>reconciliation</code></li>
+  <li><code>proj-1</code></li>
+  <li><code>proj-2</code></li>
+  <li><code>proj-3</code></li>
 </ul>
 
 Under <code>platform/</code>:
@@ -316,7 +316,7 @@ Under <code>platform/</code>:
 </div>
 
 <div class="expected">
-<strong>Check:</strong> Navigate to <code>acme-poc</code>. You should see all zones as immediate subgroups. Drilling into <code>live-production/payments</code> should show 3 projects plus a <code>restricted</code> subgroup. Take a screenshot of the group tree.
+<strong>Check:</strong> Navigate to <code>acme-poc</code>. You should see all zones as immediate subgroups. Drilling into <code>live-production/domain-a</code> should show 3 projects plus a <code>restricted</code> subgroup. Take a screenshot of the group tree.
 </div>
 
 <hr>
@@ -343,10 +343,10 @@ Inside <code>acme-poc/iam-sim/</code>, create three subgroups (all Private):
 <div class="step">
 Under <code>iam-sim/sscam/</code>, create these subgroups (all Private, no members yet):
 <ul>
-  <li><code>payments-api_w</code></li>
-  <li><code>payments-api_r</code></li>
-  <li><code>payments-ui_w</code></li>
-  <li><code>payments-ui_r</code></li>
+  <li><code>domain-a-proj-1_w</code></li>
+  <li><code>domain-a-proj-1_r</code></li>
+  <li><code>domain-a-proj-2_w</code></li>
+  <li><code>domain-a-proj-2_r</code></li>
 </ul>
 </div>
 
@@ -355,14 +355,14 @@ Under <code>iam-sim/sscam/</code>, create these subgroups (all Private, no membe
 <div class="step">
 Under <code>iam-sim/sailpoint/</code>, create:
 <ul>
-  <li><code>gl-payments-read</code></li>
-  <li><code>gl-payments-dev</code></li>
-  <li><code>gl-payments-maint</code></li>
-  <li><code>gl-payments-owner</code></li>
-  <li><code>gl-trade-read</code></li>
-  <li><code>gl-trade-dev</code></li>
-  <li><code>gl-trade-maint</code></li>
-  <li><code>gl-trade-owner</code></li>
+  <li><code>gl-domain-a-read</code></li>
+  <li><code>gl-domain-a-dev</code></li>
+  <li><code>gl-domain-a-maint</code></li>
+  <li><code>gl-domain-a-owner</code></li>
+  <li><code>gl-domain-b-read</code></li>
+  <li><code>gl-domain-b-dev</code></li>
+  <li><code>gl-domain-b-maint</code></li>
+  <li><code>gl-domain-b-owner</code></li>
   <li><code>gl-restricted-read</code></li>
 </ul>
 </div>
@@ -372,13 +372,13 @@ Under <code>iam-sim/sailpoint/</code>, create:
 <div class="step">
 Under <code>iam-sim/p2p/</code>, create:
 <ul>
-  <li><code>P2P_GS_DevOps_payments_Promoter</code></li>
-  <li><code>P2P_GS_DevOps_payments_Operator</code></li>
-  <li><code>P2P_GS_DevOps_payments_SecurityManager</code></li>
-  <li><code>P2P_GS_DevOps_payments_Maintainer</code></li>
-  <li><code>P2P_GS_DevOps_payments_Developer</code></li>
-  <li><code>P2P_GS_DevOps_payments_Reporter</code></li>
-  <li><code>P2P_GS_DevOps_Owner</code></li>
+  <li><code>IAM_DevOps_domain-a_Promoter</code></li>
+  <li><code>IAM_DevOps_domain-a_Operator</code></li>
+  <li><code>IAM_DevOps_domain-a_SecurityManager</code></li>
+  <li><code>IAM_DevOps_domain-a_Maintainer</code></li>
+  <li><code>IAM_DevOps_domain-a_Developer</code></li>
+  <li><code>IAM_DevOps_domain-a_Reporter</code></li>
+  <li><code>IAM_DevOps_Owner</code></li>
 </ul>
 </div>
 
@@ -397,14 +397,14 @@ Under <code>iam-sim/p2p/</code>, create:
 <h3>Step 4.1 — Invite users into SSCAM groups</h3>
 
 <div class="step">
-Navigate to <code>iam-sim/sscam/payments-api_w</code>. Go to <span class="nav">Manage → Members → Invite members</span>.
+Navigate to <code>iam-sim/sscam/domain-a-proj-1_w</code>. Go to <span class="nav">Manage → Members → Invite members</span>.
 <ul>
   <li>Invite <code>poc-alice</code> as Developer.</li>
 </ul>
 
-Navigate to <code>iam-sim/sscam/payments-api_r</code>. Invite <code>poc-rita</code> as Reporter.
+Navigate to <code>iam-sim/sscam/domain-a-proj-1_r</code>. Invite <code>poc-rita</code> as Reporter.
 
-<br><br>Leave <code>payments-ui_w</code> and <code>payments-ui_r</code> empty for now (used later in migration tests).
+<br><br>Leave <code>domain-a-proj-2_w</code> and <code>domain-a-proj-2_r</code> empty for now (used later in migration tests).
 </div>
 
 <div class="callout-info">
@@ -416,10 +416,10 @@ Navigate to <code>iam-sim/sscam/payments-api_r</code>. Invite <code>poc-rita</co
 <div class="step">
 Invite members as follows:
 <ul>
-  <li><code>gl-payments-dev</code> — <code>poc-alice</code> as Developer</li>
-  <li><code>gl-payments-read</code> — <code>poc-rita</code> as Reporter</li>
-  <li><code>gl-payments-maint</code> — <code>poc-bob</code> as Maintainer</li>
-  <li><code>gl-trade-dev</code> — a designated trade test user (can reuse Alice for brevity, or use another account)</li>
+  <li><code>gl-domain-a-dev</code> — <code>poc-alice</code> as Developer</li>
+  <li><code>gl-domain-a-read</code> — <code>poc-rita</code> as Reporter</li>
+  <li><code>gl-domain-a-maint</code> — <code>poc-bob</code> as Maintainer</li>
+  <li><code>gl-domain-b-dev</code> — a designated domain-b test user (can reuse Alice for brevity, or use another account)</li>
   <li><code>gl-restricted-read</code> — <code>poc-con</code> as Reporter</li>
 </ul>
 </div>
@@ -429,12 +429,12 @@ Invite members as follows:
 <div class="step">
 Invite members:
 <ul>
-  <li><code>P2P_GS_DevOps_payments_Promoter</code> — <code>poc-paul</code> as Developer</li>
-  <li><code>P2P_GS_DevOps_payments_Operator</code> — <code>poc-carol</code> as Developer</li>
-  <li><code>P2P_GS_DevOps_payments_SecurityManager</code> — <code>poc-sam</code> as Developer</li>
-  <li><code>P2P_GS_DevOps_payments_Maintainer</code> — <code>poc-bob</code> as Maintainer</li>
-  <li><code>P2P_GS_DevOps_payments_Developer</code> — <code>poc-alice</code> as Developer</li>
-  <li><code>P2P_GS_DevOps_payments_Reporter</code> — <code>poc-rita</code> as Reporter</li>
+  <li><code>IAM_DevOps_domain-a_Promoter</code> — <code>poc-paul</code> as Developer</li>
+  <li><code>IAM_DevOps_domain-a_Operator</code> — <code>poc-carol</code> as Developer</li>
+  <li><code>IAM_DevOps_domain-a_SecurityManager</code> — <code>poc-sam</code> as Developer</li>
+  <li><code>IAM_DevOps_domain-a_Maintainer</code> — <code>poc-bob</code> as Maintainer</li>
+  <li><code>IAM_DevOps_domain-a_Developer</code> — <code>poc-alice</code> as Developer</li>
+  <li><code>IAM_DevOps_domain-a_Reporter</code> — <code>poc-rita</code> as Reporter</li>
 </ul>
 </div>
 
@@ -454,21 +454,21 @@ Navigate to <code>acme-poc</code> (top-level). Invite <code>poc-dan</code> as <s
 
 <h2>6. Phase 5 — Approach 1 Configuration</h2>
 
-<p>Wire up the hybrid pattern on <code>payments/api</code>. This mirrors Bitbucket-style per-project access with a minimal deployment-zone grouping.</p>
+<p>Wire up the hybrid pattern on <code>domain-a/proj-1</code>. This mirrors Bitbucket-style per-project access with a minimal deployment-zone grouping.</p>
 
-<h3>Step 5.1 — Share SSCAM groups with payments/api</h3>
+<h3>Step 5.1 — Share SSCAM groups with domain-a/proj-1</h3>
 
 <div class="step">
-Navigate to <code>acme-poc/live-production/payments/api → Manage → Members</code>. Click <strong>Invite a group</strong>.
+Navigate to <code>acme-poc/live-production/domain-a/proj-1 → Manage → Members</code>. Click <strong>Invite a group</strong>.
 <ul>
-  <li>Group to invite: <code>acme-poc/iam-sim/sscam/payments-api_w</code></li>
+  <li>Group to invite: <code>acme-poc/iam-sim/sscam/domain-a-proj-1_w</code></li>
   <li>Max role: <strong>Developer</strong></li>
 </ul>
 Click <strong>Invite</strong>.
 
 <br><br>Repeat:
 <ul>
-  <li>Invite group: <code>acme-poc/iam-sim/sscam/payments-api_r</code></li>
+  <li>Invite group: <code>acme-poc/iam-sim/sscam/domain-a-proj-1_r</code></li>
   <li>Max role: <strong>Reporter</strong></li>
 </ul>
 </div>
@@ -476,9 +476,9 @@ Click <strong>Invite</strong>.
 <h3>Step 5.2 — Share optional SailPoint group at domain level</h3>
 
 <div class="step">
-Navigate to <code>live-production/payments → Manage → Members → Invite a group</code>.
+Navigate to <code>live-production/domain-a → Manage → Members → Invite a group</code>.
 <ul>
-  <li>Invite group: <code>acme-poc/iam-sim/sailpoint/gl-payments-dev</code></li>
+  <li>Invite group: <code>acme-poc/iam-sim/sailpoint/gl-domain-a-dev</code></li>
   <li>Max role: <strong>Developer</strong></li>
 </ul>
 
@@ -488,7 +488,7 @@ This represents the "optional product-level group" in Approach 1.
 <h3>Step 5.3 — Share restricted-read with the restricted subgroup</h3>
 
 <div class="step">
-Navigate to <code>live-production/payments/restricted → Manage → Members → Invite a group</code>.
+Navigate to <code>live-production/domain-a/restricted → Manage → Members → Invite a group</code>.
 <ul>
   <li>Invite group: <code>acme-poc/iam-sim/sailpoint/gl-restricted-read</code></li>
   <li>Max role: <strong>Reporter</strong></li>
@@ -498,15 +498,15 @@ Navigate to <code>live-production/payments/restricted → Manage → Members →
 <h3>Step 5.4 — Share Maintainer group at domain level</h3>
 
 <div class="step">
-Navigate to <code>live-production/payments → Manage → Members → Invite a group</code>.
+Navigate to <code>live-production/domain-a → Manage → Members → Invite a group</code>.
 <ul>
-  <li>Invite group: <code>acme-poc/iam-sim/p2p/P2P_GS_DevOps_payments_Maintainer</code></li>
+  <li>Invite group: <code>acme-poc/iam-sim/p2p/IAM_DevOps_domain-a_Maintainer</code></li>
   <li>Max role: <strong>Maintainer</strong></li>
 </ul>
 </div>
 
 <div class="expected">
-<strong>Check:</strong> Log in as Alice. She should now see <code>payments/api</code>, <code>payments/ui</code>, and <code>payments/batch</code> in her project list. She can access <code>api</code> as Developer via two paths (SSCAM direct + SailPoint domain-level). Log in as Con — he should see <code>payments-secrets</code> only. Log in as Dan — he should see non-restricted projects via Internal visibility but cannot write anywhere.
+<strong>Check:</strong> Log in as Alice. She should now see <code>domain-a/proj-1</code>, <code>domain-a/proj-2</code>, and <code>domain-a/proj-3</code> in her project list. She can access <code>api</code> as Developer via two paths (SSCAM direct + SailPoint domain-level). Log in as Con — he should see <code>restricted-proj-1</code> only. Log in as Dan — he should see non-restricted projects via Internal visibility but cannot write anywhere.
 </div>
 
 <hr>
@@ -515,40 +515,40 @@ Navigate to <code>live-production/payments → Manage → Members → Invite a g
 
 <h2>7. Phase 6 — Approach 2 Configuration</h2>
 
-<p>Wire up the pure group-centric pattern on the <code>trade/</code> domain. No project-level sharing — everything at the domain.</p>
+<p>Wire up the pure group-centric pattern on the <code>domain-b/</code> domain. No project-level sharing — everything at the domain.</p>
 
-<h3>Step 6.1 — Share SailPoint groups with trade domain</h3>
+<h3>Step 6.1 — Share SailPoint groups with domain-b</h3>
 
 <div class="step">
-Navigate to <code>acme-poc/live-production/trade → Manage → Members → Invite a group</code>. Add:
+Navigate to <code>acme-poc/live-production/domain-b → Manage → Members → Invite a group</code>. Add:
 <ul>
-  <li><code>gl-trade-read</code> as <strong>Reporter</strong></li>
-  <li><code>gl-trade-dev</code> as <strong>Developer</strong></li>
-  <li><code>gl-trade-maint</code> as <strong>Maintainer</strong></li>
-  <li><code>gl-trade-owner</code> as <strong>Owner</strong></li>
+  <li><code>gl-domain-b-read</code> as <strong>Reporter</strong></li>
+  <li><code>gl-domain-b-dev</code> as <strong>Developer</strong></li>
+  <li><code>gl-domain-b-maint</code> as <strong>Maintainer</strong></li>
+  <li><code>gl-domain-b-owner</code> as <strong>Owner</strong></li>
 </ul>
 
-Do NOT share any groups with <code>trade/orders</code>, <code>trade/settlements</code>, or <code>trade/reconciliation</code> directly. All access must come from inheritance.
+Do NOT share any groups with <code>domain-b/proj-1</code>, <code>domain-b/proj-2</code>, or <code>domain-b/proj-3</code> directly. All access must come from inheritance.
 </div>
 
 <h3>Step 6.2 — Verify inheritance</h3>
 
 <div class="step">
-Ensure a test user (e.g., Alice) is a member of <code>gl-trade-dev</code>. Log in as Alice.
+Ensure a test user (e.g., Alice) is a member of <code>gl-domain-b-dev</code>. Log in as Alice.
 </div>
 
 <div class="expected">
-<strong>Check:</strong> Alice has Developer access on all three trade projects immediately, without any per-project configuration. The Members view on <code>trade/orders</code> shows access "inherited from trade" for Alice.
+<strong>Check:</strong> Alice has Developer access on all three domain-b projects immediately, without any per-project configuration. The Members view on <code>domain-b/proj-1</code> shows access "inherited from domain-b" for Alice.
 </div>
 
 <h3>Step 6.3 — Test new-project auto-inheritance</h3>
 
 <div class="step">
-As Owner, create a fourth project <code>trade-reports</code> under <code>trade/</code>. Do not configure any members.
+As Owner, create a fourth project <code>domain-b-reports</code> under <code>domain-b/</code>. Do not configure any members.
 </div>
 
 <div class="expected">
-<strong>Check:</strong> Alice has Developer access on <code>trade-reports</code> immediately. This proves the core scalability benefit of Approach 2: new projects inherit the domain's access automatically.
+<strong>Check:</strong> Alice has Developer access on <code>domain-b-reports</code> immediately. This proves the core scalability benefit of Approach 2: new projects inherit the domain's access automatically.
 </div>
 
 <hr>
@@ -557,12 +557,12 @@ As Owner, create a fourth project <code>trade-reports</code> under <code>trade/<
 
 <h2>8. Phase 7 — Branch, Tag, and Environment Protection</h2>
 
-<p>Configure the protection rules that make roles meaningful. Apply to <code>payments/api</code> and <code>trade/orders</code> as the two primary test projects.</p>
+<p>Configure the protection rules that make roles meaningful. Apply to <code>domain-a/proj-1</code> and <code>domain-b/proj-1</code> as the two primary test projects.</p>
 
-<h3>Step 7.1 — Protect main on payments/api</h3>
+<h3>Step 7.1 — Protect main on domain-a/proj-1</h3>
 
 <div class="step">
-Navigate to <code>payments/api → Settings → Repository → Protected branches</code>. For <code>main</code>:
+Navigate to <code>domain-a/proj-1 → Settings → Repository → Protected branches</code>. For <code>main</code>:
 <ul>
   <li>Allowed to merge: <strong>Maintainers</strong></li>
   <li>Allowed to push and merge: <strong>No one</strong></li>
@@ -585,18 +585,18 @@ Add an approval rule:
 <ul>
   <li>Name: "Default"</li>
   <li>Required approvals: <strong>1</strong></li>
-  <li>Approvers: <code>acme-poc/iam-sim/p2p/P2P_GS_DevOps_payments_Maintainer</code></li>
+  <li>Approvers: <code>acme-poc/iam-sim/p2p/IAM_DevOps_domain-a_Maintainer</code></li>
 </ul>
 </div>
 
 <h3>Step 7.3 — Add CODEOWNERS</h3>
 
 <div class="step">
-As <code>poc-bob</code> (Maintainer), add a <code>CODEOWNERS</code> file at the root of <code>payments/api</code>:
+As <code>poc-bob</code> (Maintainer), add a <code>CODEOWNERS</code> file at the root of <code>domain-a/proj-1</code>:
 
-<pre><code>*                @acme-poc/iam-sim/p2p/P2P_GS_DevOps_payments_Maintainer
-/infra/          @acme-poc/iam-sim/p2p/P2P_GS_DevOps_payments_SecurityManager
-/.gitlab-ci.yml  @acme-poc/iam-sim/p2p/P2P_GS_DevOps_payments_Maintainer
+<pre><code>*                @acme-poc/iam-sim/p2p/IAM_DevOps_domain-a_Maintainer
+/infra/          @acme-poc/iam-sim/p2p/IAM_DevOps_domain-a_SecurityManager
+/.gitlab-ci.yml  @acme-poc/iam-sim/p2p/IAM_DevOps_domain-a_Maintainer
 </code></pre>
 Commit directly to main.
 </div>
@@ -631,10 +631,10 @@ Navigate to <code>Settings → CI/CD → Protected environments</code>. Add:
 Note: the "prod" environment must be created before it can be protected. Create it via <code>Operate → Environments → New environment</code> first.
 </div>
 
-<h3>Step 7.6 — Add a minimal pipeline to payments/api</h3>
+<h3>Step 7.6 — Add a minimal pipeline to domain-a/proj-1</h3>
 
 <div class="step">
-As Bob, add <code>.gitlab-ci.yml</code> to payments/api:
+As Bob, add <code>.gitlab-ci.yml</code> to domain-a/proj-1:
 
 <pre><code>stages:
   - build
@@ -668,10 +668,10 @@ deploy_prod:
 Commit to main.
 </div>
 
-<h3>Step 7.7 — Repeat on trade/orders</h3>
+<h3>Step 7.7 — Repeat on domain-b/proj-1</h3>
 
 <div class="step">
-Repeat steps 7.1–7.6 on <code>trade/orders</code>, substituting the trade SailPoint groups in approval rules and CODEOWNERS. This gives you two fully protected projects — one under each approach.
+Repeat steps 7.1–7.6 on <code>domain-b/proj-1</code>, substituting the domain-b SailPoint groups in approval rules and CODEOWNERS. This gives you two fully protected projects — one under each approach.
 </div>
 
 <hr>
@@ -680,13 +680,13 @@ Repeat steps 7.1–7.6 on <code>trade/orders</code>, substituting the trade Sail
 
 <h2>9. Phase 8 — Baseline Role Tests</h2>
 
-<p>Verify that standard roles (Developer, Maintainer, Reporter) behave correctly on <code>payments/api</code>.</p>
+<p>Verify that standard roles (Developer, Maintainer, Reporter) behave correctly on <code>domain-a/proj-1</code>.</p>
 
 <h3>Step 8.1 — Alice pushes a feature branch</h3>
 
 <div class="step">
 In Alice's browser profile:
-<pre><code>git clone git@&lt;gitlab-host&gt;:acme-poc/live-production/payments/api.git
+<pre><code>git clone git@&lt;gitlab-host&gt;:acme-poc/live-production/domain-a/proj-1.git
 cd api
 git checkout -b alice-feature-1
 echo "change" &gt;&gt; test.txt
@@ -801,11 +801,11 @@ As Bob, navigate to <code>Operate → Environments → prod → Deployments</cod
 <h3>Step 9.1 — Assign custom roles to IAM groups</h3>
 
 <div class="step">
-Navigate to <code>payments/api → Manage → Members → Invite a group</code>. Add each:
+Navigate to <code>domain-a/proj-1 → Manage → Members → Invite a group</code>. Add each:
 <ul>
-  <li><code>P2P_GS_DevOps_payments_Promoter</code> with custom role <strong>Promoter</strong></li>
-  <li><code>P2P_GS_DevOps_payments_Operator</code> with custom role <strong>Operator</strong></li>
-  <li><code>P2P_GS_DevOps_payments_SecurityManager</code> with custom role <strong>Security Manager</strong></li>
+  <li><code>IAM_DevOps_domain-a_Promoter</code> with custom role <strong>Promoter</strong></li>
+  <li><code>IAM_DevOps_domain-a_Operator</code> with custom role <strong>Operator</strong></li>
+  <li><code>IAM_DevOps_domain-a_SecurityManager</code> with custom role <strong>Security Manager</strong></li>
 </ul>
 </div>
 
@@ -840,7 +840,7 @@ Push to main. Pipeline runs with manual promotion job.
 <h3>Step 9.3 — Test Operator (layered restriction)</h3>
 
 <div class="step">
-As Carol (Operator), navigate to <code>payments/api</code>. Confirm she has the Operator custom role on the project via Members view.
+As Carol (Operator), navigate to <code>domain-a/proj-1</code>. Confirm she has the Operator custom role on the project via Members view.
 
 <br><br>Test 1: Play the <code>deploy_prod</code> job on a tag pipeline. Expected to succeed (she is in the prod environment allow-list configured in Phase 7).
 
@@ -858,7 +858,7 @@ As Carol (Operator), navigate to <code>payments/api</code>. Confirm she has the 
 <div class="step">
 As Sam (Security Manager):
 
-<br><br>Test 1: Navigate to <code>payments/api → Secure → Vulnerability report</code>. Expected to see the dashboard (even if empty).
+<br><br>Test 1: Navigate to <code>domain-a/proj-1 → Secure → Vulnerability report</code>. Expected to see the dashboard (even if empty).
 
 <br><br>Test 2: If any vulnerability is present (generate one by committing a <code>.gitleaks.toml</code> test secret), dismiss it with a justification. Expected to succeed.
 
@@ -882,7 +882,7 @@ As Sam (Security Manager):
 <h3>Step 10.1 — Dan discovers and forks</h3>
 
 <div class="step">
-As <code>poc-dan</code> (Minimal Access at top level), navigate to GitLab search and search for "payments api". Confirm the project appears. Open it. Click <strong>Fork</strong> and fork into Dan's personal namespace.
+As <code>poc-dan</code> (Minimal Access at top level), navigate to GitLab search and search for "domain-a api". Confirm the project appears. Open it. Click <strong>Fork</strong> and fork into Dan's personal namespace.
 </div>
 
 <div class="expected">
@@ -901,14 +901,14 @@ git add CONTRIBUTORS.md
 git commit -m "Add contributor"
 git push origin dan-contribution</code></pre>
 
-Then on the fork project page, open a merge request targeting the upstream <code>acme-poc/live-production/payments/api:main</code>.
+Then on the fork project page, open a merge request targeting the upstream <code>acme-poc/live-production/domain-a/proj-1:main</code>.
 </div>
 
 <h3>Step 10.3 — Dan cannot push to upstream</h3>
 
 <div class="step">
 As Dan:
-<pre><code>git remote add upstream git@&lt;gitlab-host&gt;:acme-poc/live-production/payments/api.git
+<pre><code>git remote add upstream git@&lt;gitlab-host&gt;:acme-poc/live-production/domain-a/proj-1.git
 git push upstream dan-contribution</code></pre>
 </div>
 
@@ -929,21 +929,21 @@ As Bob, review and merge Dan's MR.
 <h3>Step 10.5 — Confidential project invisibility</h3>
 
 <div class="step">
-As Dan, search for "payments-secrets". As Alice (Developer on payments), search for the same.
+As Dan, search for "restricted-proj-1". As Alice (Developer on domain-a), search for the same.
 </div>
 
 <div class="expected">
-<strong>Expected:</strong> Neither Dan nor Alice can find <code>payments-secrets</code>. The <code>restricted/</code> Private subgroup hides it from everyone not explicitly granted.
+<strong>Expected:</strong> Neither Dan nor Alice can find <code>restricted-proj-1</code>. The <code>restricted/</code> Private subgroup hides it from everyone not explicitly granted.
 </div>
 
 <h3>Step 10.6 — Con sees only restricted</h3>
 
 <div class="step">
-As Con, navigate to <code>live-production/payments</code>.
+As Con, navigate to <code>live-production/domain-a</code>.
 </div>
 
 <div class="expected">
-<strong>Expected:</strong> Con sees only <code>payments-secrets</code> (via <code>gl-restricted-read</code>). He does NOT see <code>api</code>, <code>ui</code>, or <code>batch</code> unless they are Internal-visible to him, which depends on whether <code>payments</code> itself is Internal to Con. Adjust as needed to match the design intent.
+<strong>Expected:</strong> Con sees only <code>restricted-proj-1</code> (via <code>gl-restricted-read</code>). He does NOT see <code>api</code>, <code>ui</code>, or <code>batch</code> unless they are Internal-visible to him, which depends on whether <code>domain-a</code> itself is Internal to Con. Adjust as needed to match the design intent.
 </div>
 
 <hr>
@@ -979,10 +979,10 @@ Navigate to <code>live-production → Build → Runners → New group runner</co
 Register it on any available host (a Docker container works for the PoC).
 </div>
 
-<h3>Step 11.3 — Verify inheritance to payments/api and trade/orders</h3>
+<h3>Step 11.3 — Verify inheritance to domain-a/proj-1 and domain-b/proj-1</h3>
 
 <div class="step">
-Add a debug job to <code>payments/api</code> <code>.gitlab-ci.yml</code>:
+Add a debug job to <code>domain-a/proj-1</code> <code>.gitlab-ci.yml</code>:
 
 <pre><code>debug_prod_token:
   stage: build
@@ -1005,7 +1005,7 @@ Push a v* tag.
 <h3>Step 11.4 — Verify non-live does NOT inherit</h3>
 
 <div class="step">
-Create a project <code>non-live-enterprise/payments/test-service</code>. Add the same debug job.
+Create a project <code>non-live-enterprise/domain-a/test-service</code>. Add the same debug job.
 </div>
 
 <div class="expected">
@@ -1015,7 +1015,7 @@ Create a project <code>non-live-enterprise/payments/test-service</code>. Add the
 <h3>Step 11.5 — Add a new project mid-test</h3>
 
 <div class="step">
-Create <code>live-production/payments/reporting</code>. Add the same debug job.
+Create <code>live-production/domain-a/reporting</code>. Add the same debug job.
 </div>
 
 <div class="expected">
@@ -1070,14 +1070,14 @@ Dan opens another MR from his fork that includes a debug_prod_token step. Config
 <h3>Step 12.4 — Scenario D: CI_JOB_TOKEN allowlist</h3>
 
 <div class="step">
-Create a project <code>trade/orders</code> that attempts to clone <code>payments/api</code> using <code>CI_JOB_TOKEN</code>:
+Create a project <code>domain-b/proj-1</code> that attempts to clone <code>domain-a/proj-1</code> using <code>CI_JOB_TOKEN</code>:
 <pre><code>test_token:
   script:
-    - git clone "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/acme-poc/live-production/payments/api.git"</code></pre>
+    - git clone "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/acme-poc/live-production/domain-a/proj-1.git"</code></pre>
 </div>
 
 <div class="expected">
-<strong>Expected:</strong> Clone fails with 403. Add <code>trade/orders</code> to <code>payments/api → Settings → CI/CD → Job token permissions → Allowlist</code>. Retry. Clone now succeeds.
+<strong>Expected:</strong> Clone fails with 403. Add <code>domain-b/proj-1</code> to <code>domain-a/proj-1 → Settings → CI/CD → Job token permissions → Allowlist</code>. Retry. Clone now succeeds.
 </div>
 
 <h3>Step 12.5 — Scenario E: Runner scoping (already validated in Step 11.4)</h3>
@@ -1085,7 +1085,7 @@ Create a project <code>trade/orders</code> that attempts to clone <code>payments
 <h3>Step 12.6 — Scenario F: Developer cannot access CI/CD settings</h3>
 
 <div class="step">
-As Alice, navigate to <code>payments/api → Settings → CI/CD → Variables</code>.
+As Alice, navigate to <code>domain-a/proj-1 → Settings → CI/CD → Variables</code>.
 </div>
 
 <div class="expected">
@@ -1095,7 +1095,7 @@ As Alice, navigate to <code>payments/api → Settings → CI/CD → Variables</c
 <h3>Step 12.7 — Scenario G: Scheduled pipeline owner</h3>
 
 <div class="step">
-As Bob, create a schedule on <code>payments/api</code> running every hour. Later, reduce Bob's role to Reporter in the IAM group and observe the schedule's next run.
+As Bob, create a schedule on <code>domain-a/proj-1</code> running every hour. Later, reduce Bob's role to Reporter in the IAM group and observe the schedule's next run.
 </div>
 
 <div class="expected">
@@ -1105,7 +1105,7 @@ As Bob, create a schedule on <code>payments/api</code> running every hour. Later
 <h3>Step 12.8 — Scenario H: Group-level variable inheritance</h3>
 
 <div class="step">
-Add a variable at <code>live-production/payments/</code> level. Confirm it is visible in <code>api</code>, <code>ui</code>, and <code>batch</code>. Add a project-level variable with the same key in <code>api</code>. Confirm project value overrides.
+Add a variable at <code>live-production/domain-a/</code> level. Confirm it is visible in <code>api</code>, <code>ui</code>, and <code>batch</code>. Add a project-level variable with the same key in <code>api</code>. Confirm project value overrides.
 </div>
 
 <h3>Step 12.9 — Scenario I: Environment-scoped same-key variables</h3>
@@ -1120,18 +1120,18 @@ Add <code>API_KEY=staging-val</code> scoped to <code>staging</code>, and <code>A
 
 <h2>14. Phase 13 — Migration from Approach 1 to Approach 2</h2>
 
-<p>Migrate <code>payments/api</code> from project-level SSCAM access to domain-level SailPoint access, with no user outage.</p>
+<p>Migrate <code>domain-a/proj-1</code> from project-level SSCAM access to domain-level SailPoint access, with no user outage.</p>
 
 <h3>Step 13.1 — Capture before-state</h3>
 
 <div class="step">
-Document Alice's current access paths on <code>payments/api</code>. From the Members view, screenshot her entry showing access via <code>payments-api_w</code> (SSCAM direct share at project level) and via <code>gl-payments-dev</code> (SailPoint share at domain level, inherited).
+Document Alice's current access paths on <code>domain-a/proj-1</code>. From the Members view, screenshot her entry showing access via <code>domain-a-proj-1_w</code> (SSCAM direct share at project level) and via <code>gl-domain-a-dev</code> (SailPoint share at domain level, inherited).
 </div>
 
 <h3>Step 13.2 — Parallel-grant phase</h3>
 
 <div class="step">
-Confirm <code>gl-payments-dev</code> is already shared with <code>payments/</code> domain (done in Phase 5). Confirm Alice is a member. No new action needed — the parallel state is already in place.
+Confirm <code>gl-domain-a-dev</code> is already shared with <code>domain-a/</code> domain (done in Phase 5). Confirm Alice is a member. No new action needed — the parallel state is already in place.
 
 <br><br>As Alice, log out and log back in. Confirm she can still push a feature branch.
 </div>
@@ -1143,7 +1143,7 @@ Confirm <code>gl-payments-dev</code> is already shared with <code>payments/</cod
 <h3>Step 13.3 — Remove SSCAM project-level shares</h3>
 
 <div class="step">
-Navigate to <code>payments/api → Manage → Members</code>. Remove the shared groups <code>payments-api_w</code> and <code>payments-api_r</code>.
+Navigate to <code>domain-a/proj-1 → Manage → Members</code>. Remove the shared groups <code>domain-a-proj-1_w</code> and <code>domain-a-proj-1_r</code>.
 </div>
 
 <h3>Step 13.4 — Validate post-removal</h3>
@@ -1159,17 +1159,17 @@ As Alice, log out, log back in. Attempt to push a branch.
 <h3>Step 13.5 — Break-test</h3>
 
 <div class="step">
-Temporarily remove Alice from <code>gl-payments-dev</code>. As Alice, try to push.
+Temporarily remove Alice from <code>gl-domain-a-dev</code>. As Alice, try to push.
 </div>
 
 <div class="expected">
-<strong>Expected:</strong> Push rejected — confirms access flows only through the SailPoint group post-migration. Re-add Alice to <code>gl-payments-dev</code> to restore.
+<strong>Expected:</strong> Push rejected — confirms access flows only through the SailPoint group post-migration. Re-add Alice to <code>gl-domain-a-dev</code> to restore.
 </div>
 
 <h3>Step 13.6 — Decommission SSCAM groups</h3>
 
 <div class="step">
-Navigate to <code>iam-sim/sscam/payments-api_w</code> and <code>payments-api_r</code>. Remove all members and delete the groups.
+Navigate to <code>iam-sim/sscam/domain-a-proj-1_w</code> and <code>domain-a-proj-1_r</code>. Remove all members and delete the groups.
 </div>
 
 <div class="expected">
@@ -1225,8 +1225,8 @@ Based on the results, produce a Go / Conditional Go / No-Go recommendation. If a
   <li>Full hierarchy constructed under <code>acme-poc</code></li>
   <li>IAM simulation groups populated</li>
   <li>All 8 test users invited and assigned to correct groups</li>
-  <li>Approach 1 wired on <code>payments/api</code></li>
-  <li>Approach 2 wired on <code>trade/</code> domain</li>
+  <li>Approach 1 wired on <code>domain-a/proj-1</code></li>
+  <li>Approach 2 wired on <code>domain-b/</code> domain</li>
   <li>Branch, tag, environment protection configured on both primary projects</li>
   <li>Baseline role tests executed with screenshots</li>
   <li>Three custom role tests executed with screenshots</li>

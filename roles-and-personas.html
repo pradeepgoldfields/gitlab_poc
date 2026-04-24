@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GitLab Roles, Custom Roles, and PoC Personas — Consolidated Table</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+         max-width: 1500px; margin: 1.5em auto; padding: 0 1.5em;
+         color: #000; background: #fff; line-height: 1.5; }
+  h1 { font-size: 1.7em; border-bottom: 2px solid #0052cc; padding-bottom: 0.3em;
+       color: #172b4d; margin-bottom: 0.4em; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.85em; }
+  th, td { border: 1px solid #dfe1e6; padding: 0.4em 0.55em; text-align: left;
+           vertical-align: top; }
+  th { background: #f4f5f7; font-weight: 600; color: #172b4d;
+       position: sticky; top: 0; z-index: 1; }
+  th.action { writing-mode: vertical-rl; transform: rotate(180deg);
+              text-align: left; padding: 0.6em 0.3em; min-width: 22px;
+              max-width: 30px; font-size: 0.8em; line-height: 1.15; height: 200px; }
+  td.persona-cell { font-weight: 600; white-space: nowrap; }
+  td.role-cell { font-family: monospace; font-size: 0.85em; white-space: nowrap; }
+  td.scope-cell { font-size: 0.83em; color: #42526e; }
+  td.action-cell { text-align: center; padding: 0.3em 0.45em; font-weight: 600; }
+  .can    { color: #00875a; }
+  .cannot { color: #de350b; }
+  .partial{ color: #ff991f; }
+  .na     { color: #c1c7d0; }
+  .badge { display: inline-block; padding: 0.05em 0.4em; border-radius: 3px;
+           font-size: 0.78em; font-family: monospace; border: 1px solid #dfe1e6;
+           background: #fff; }
+  .badge-default { background: #deebff; border-color: #0052cc; color: #0747a6; }
+  .badge-custom  { background: #fffae6; border-color: #ff991f; color: #974f0c; }
+  .legend { font-size: 0.85em; color: #42526e; margin: 0.6em 0 1.2em 0;
+            background: #f4f5f7; padding: 0.7em 1em; border-radius: 4px;
+            border-left: 4px solid #0052cc; }
+  .legend span { margin-right: 1.5em; display: inline-block; }
+  .footnotes { font-size: 0.85em; color: #42526e; margin-top: 1.5em; }
+  .footnotes ol { padding-left: 1.4em; }
+  .footnotes li { margin: 0.3em 0; }
+  code { background: #f4f5f7; padding: 0.05em 0.3em; border-radius: 3px;
+         font-size: 0.88em; }
+</style>
+</head>
+<body>
+
+<h1>GitLab Roles &amp; PoC Personas — Consolidated Capability Matrix</h1>
+
+<div class="legend">
+  <span><strong class="can">Y</strong> = action permitted</span>
+  <span><strong class="cannot">N</strong> = action blocked</span>
+  <span><strong class="partial">~</strong> = conditional (see footnote)</span>
+  <span><strong class="na">—</strong> = not applicable / no relationship to project</span>
+  <br>
+  <span style="margin-top:0.4em; display:inline-block;">
+    <span class="badge badge-default">default</span> = built-in GitLab role &nbsp;
+    <span class="badge badge-custom">custom</span> = PoC custom role (Phase 1)
+  </span>
+  <br>
+  <span style="margin-top:0.4em; display:inline-block;">
+    Actions are scoped to <code>domain-a/proj-1</code> unless noted. Sources of truth:
+    <code>analysis</code> + <code>gitlab-poc-scripts/config.py</code>.
+  </span>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th rowspan="2" style="min-width:100px;">Persona</th>
+      <th rowspan="2" style="min-width:120px;">Effective role(s)</th>
+      <th rowspan="2" style="min-width:140px;">Scope of role</th>
+      <th colspan="3" style="text-align:center;">Repo — read</th>
+      <th colspan="7" style="text-align:center;">Repo — write</th>
+      <th colspan="9" style="text-align:center;">CI / CD</th>
+      <th colspan="2" style="text-align:center;">Security</th>
+      <th colspan="4" style="text-align:center;">Settings &amp; admin</th>
+    </tr>
+    <tr>
+      <th class="action">Clone <code>domain-a/proj-1</code> (Internal)</th>
+      <th class="action">Clone <code>restricted-proj-1</code> (Private)</th>
+      <th class="action">Clone <code>domain-b/proj-1</code> (sibling Internal)</th>
+
+      <th class="action">Push to feature branch on <code>domain-a/proj-1</code></th>
+      <th class="action">Push directly to protected <code>main</code></th>
+      <th class="action">Open MR targeting <code>main</code></th>
+      <th class="action">Approve someone else's MR</th>
+      <th class="action">Approve own authored MR</th>
+      <th class="action">Merge to protected <code>main</code></th>
+      <th class="action">Create release tag <code>v*</code></th>
+
+      <th class="action">Run pipeline on feature branch</th>
+      <th class="action">Read non-protected CI variables</th>
+      <th class="action">View / list CI variables in Settings</th>
+      <th class="action">Edit / add CI variables</th>
+      <th class="action">Play <code>deploy_prod</code> manual job</th>
+      <th class="action">Approve pending prod deployment</th>
+      <th class="action">Edit protected branches / tags / envs</th>
+      <th class="action">Register a runner</th>
+      <th class="action">Create pipeline schedule</th>
+
+      <th class="action">View vulnerability reports</th>
+      <th class="action">Dismiss / waive vulnerability</th>
+
+      <th class="action">Open Settings → General</th>
+      <th class="action">Add / remove project members</th>
+      <th class="action">Delete the project</th>
+      <th class="action">Read group / project audit events</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- Alice — Developer -->
+    <tr>
+      <td class="persona-cell"><code>poc-alice</code><br><span style="font-weight:normal; color:#5e6c84;">Alice Developer</span></td>
+      <td class="role-cell"><span class="badge badge-default">Developer</span></td>
+      <td class="scope-cell">domain-a/proj-1, domain-a/proj-2, domain-a/proj-3 (via Approach 1+2 shares)</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+    <!-- Bob — Maintainer -->
+    <tr>
+      <td class="persona-cell"><code>poc-bob</code><br><span style="font-weight:normal; color:#5e6c84;">Bob Maintainer</span></td>
+      <td class="role-cell"><span class="badge badge-default">Maintainer</span></td>
+      <td class="scope-cell">domain-a/proj-1, domain-a/proj-2, domain-a/proj-3</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N<sup>1</sup></td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N<sup>2</sup></td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y<sup>3</sup></td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+    </tr>
+    <!-- Carol — Operator (custom) -->
+    <tr>
+      <td class="persona-cell"><code>poc-carol</code><br><span style="font-weight:normal; color:#5e6c84;">Carol Operator</span></td>
+      <td class="role-cell"><span class="badge badge-default">Reporter</span> + <span class="badge badge-custom">Operator</span></td>
+      <td class="scope-cell">domain-a/proj-1; individually allowed deployer to prod env</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="na action-cell">—</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y<sup>4</sup></td><td class="action-cell cannot">N<sup>5</sup></td><td class="action-cell can">Y<sup>6</sup></td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+    <!-- Paul — Promoter (custom) -->
+    <tr>
+      <td class="persona-cell"><code>poc-paul</code><br><span style="font-weight:normal; color:#5e6c84;">Paul Promoter</span></td>
+      <td class="role-cell"><span class="badge badge-default">Reporter</span> + <span class="badge badge-custom">Promoter</span></td>
+      <td class="scope-cell">domain-a/proj-1</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="na action-cell">—</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+    <!-- Sam — Security Manager (custom) -->
+    <tr>
+      <td class="persona-cell"><code>poc-sam</code><br><span style="font-weight:normal; color:#5e6c84;">Sam Sec Mgr</span></td>
+      <td class="role-cell"><span class="badge badge-default">Reporter</span> + <span class="badge badge-custom">Security Mgr</span></td>
+      <td class="scope-cell">domain-a/proj-1</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell can">Y<sup>7</sup></td><td class="na action-cell">—</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+    <!-- Rita — Reporter -->
+    <tr>
+      <td class="persona-cell"><code>poc-rita</code><br><span style="font-weight:normal; color:#5e6c84;">Rita Reporter</span></td>
+      <td class="role-cell"><span class="badge badge-default">Reporter</span></td>
+      <td class="scope-cell">domain-a/proj-1 (Approach 1 SSCAM share — removed by Phase 13)</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="na action-cell">—</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+    <!-- Dan — Inner source (Minimal Access only at top group) -->
+    <tr>
+      <td class="persona-cell"><code>poc-dan</code><br><span style="font-weight:normal; color:#5e6c84;">Dan InnerSource</span></td>
+      <td class="role-cell"><span class="badge badge-default">Minimal Access</span></td>
+      <td class="scope-cell">acme-poc top-level group only — no project role</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell partial">~<sup>8</sup></td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell partial">~<sup>9</sup></td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+    <!-- Con — Confidential reader -->
+    <tr>
+      <td class="persona-cell"><code>poc-con</code><br><span style="font-weight:normal; color:#5e6c84;">Con Confidential</span></td>
+      <td class="role-cell"><span class="badge badge-default">Reporter</span></td>
+      <td class="scope-cell">domain-a/restricted/restricted-proj-1 ONLY (Private)</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="na action-cell">—</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+    <!-- root — admin -->
+    <tr>
+      <td class="persona-cell"><code>root</code><br><span style="font-weight:normal; color:#5e6c84;">Administrator</span></td>
+      <td class="role-cell"><span class="badge badge-default">Instance Admin</span></td>
+      <td class="scope-cell">Whole instance</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N<sup>10</sup></td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="footnotes">
+  <strong>Footnotes</strong>
+  <ol>
+    <li>Bob can't <em>push</em> to <code>main</code> either. The protected-branch rule is "Allowed to push: No one; Allowed to merge: Maintainers". Bob can merge MRs into main but not push directly.</li>
+    <li>Bob is a Maintainer but the <code>prod</code> environment's allowed-deployer list contains only Carol — being Maintainer is not enough to play the manual deploy job. This is the user-specific layer.</li>
+    <li>Maintainer can add members up to Maintainer level. Adding an Owner requires an Owner.</li>
+    <li>Carol plays the job, but the deployment then transitions to "waiting for approval" because the prod environment requires Bob's approval (two-person rule).</li>
+    <li>Even if Carol were on the approver list, GitLab blocks self-approval on a deployment she initiated.</li>
+    <li>Operator's <code>admin_protected_environments</code> ability covers environments. Carol does <em>not</em> have <code>admin_protected_branches</code>, so branch rules remain Maintainer-only.</li>
+    <li>Sam approves via the <code>admin_merge_request</code> ability — designed for security-sensitive MRs (e.g. <code>/infra/</code> per CODEOWNERS), without granting write access.</li>
+    <li>Dan opens MRs from a fork (<code>poc-dan/api</code>), not the upstream. He can't create a feature branch on upstream <code>domain-a/proj-1</code>.</li>
+    <li>Dan can run pipelines on his fork. When his fork-MR runs against upstream, fork pipelines require Maintainer approval to execute, and protected variables remain hidden.</li>
+    <li><code>root</code> can't push to <code>main</code> via the standard flow — protected-branch rule "Allowed to push: No one" applies even to admin. Admin can override by editing the protection rule first.</li>
+  </ol>
+</div>
+
+</body>
+</html>

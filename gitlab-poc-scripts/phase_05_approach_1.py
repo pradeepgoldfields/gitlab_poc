@@ -2,8 +2,8 @@
 """
 Phase 5 — Approach 1 (Hybrid) Configuration
 
-Shares SSCAM project-level groups with payments/api plus optional product-level
-SailPoint share at domain level, per APPROACH_1_SHARES.
+Shares SSCAM project-level groups with domain-a/proj-1 plus optional
+product-level SailPoint share at domain level, per APPROACH_1_SHARES.
 
 Usage: python3 phase_05_approach_1.py
 """
@@ -41,7 +41,7 @@ def main():
             return 1
 
     banner("PHASE 5 COMPLETE", char="-")
-    done("Approach 1 (hybrid) shares are in place on payments/api.")
+    done("Approach 1 (hybrid) shares are in place on domain-a/proj-1.")
     done("Next: run phase_06_approach_2.py")
     return 0
 

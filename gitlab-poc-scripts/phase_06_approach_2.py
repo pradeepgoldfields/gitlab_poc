@@ -2,7 +2,7 @@
 """
 Phase 6 — Approach 2 (Target) Configuration
 
-Shares SailPoint groups at the trade domain level only — no project-level
+Shares SailPoint groups at the domain-b level only — no project-level
 shares. Access flows purely by inheritance.
 
 Usage: python3 phase_06_approach_2.py
@@ -35,8 +35,8 @@ def main():
             return 1
 
     banner("PHASE 6 COMPLETE", char="-")
-    done("Approach 2 shares on trade/ are in place.")
-    done("Verify: any user added to gl-trade-dev should now have Developer on all trade projects.")
+    done("Approach 2 shares on domain-b/ are in place.")
+    done("Verify: any user added to gl-domain-b-dev should now have Developer on all domain-b projects.")
     done("Next: run phase_07_protection.py")
     return 0
 

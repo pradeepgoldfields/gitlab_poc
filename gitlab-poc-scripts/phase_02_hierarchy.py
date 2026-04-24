@@ -4,10 +4,10 @@ Phase 2 — Hierarchy Skeleton
 
 Creates the deployment-zone hierarchy:
   acme-poc/
-    live-production/payments/{api,ui,batch} + restricted/payments-secrets
-    live-production/trade/{orders,settlements,reconciliation}
-    live-cloud-landing-zone/payments
-    non-live-enterprise/payments
+    live-production/domain-a/{proj-1,proj-2,proj-3} + restricted/restricted-proj-1
+    live-production/domain-b/{proj-1,proj-2,proj-3}
+    live-cloud-landing-zone/domain-a
+    non-live-enterprise/domain-a
     iam-sim/     (Private)
     platform/ci-templates
 
@@ -58,7 +58,7 @@ def main():
             done(path)
 
     # Restricted subgroups (always Private)
-    for rpath in ["live-production/payments/restricted", "live-production/trade/restricted"]:
+    for rpath in ["live-production/domain-a/restricted", "live-production/domain-b/restricted"]:
         full = f"{config.TOP_GROUP}/{rpath}"
         step(f"Ensuring restricted subgroup (Private): {full}")
         gl.ensure_group(full, visibility="private")

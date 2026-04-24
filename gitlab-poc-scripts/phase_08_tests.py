@@ -12,14 +12,14 @@ Requires: a Personal Access Token for each test user, set as environment variabl
 If a user token is missing, the relevant test is skipped with a warning.
 
 Tests:
-  T1 — Alice cannot delete payments/api (Developer)
+  T1 — Alice cannot delete domain-a/proj-1 (Developer)
   T2 — Alice cannot edit protected branch rules
   T3 — Alice cannot view CI/CD variables
   T4 — Alice can push to a feature branch (creates one via API)
   T5 — Rita has read-only access (can list MRs but not create)
   T6 — Bob can merge to protected branches (via API, requires existing MR)
-  T7 — Dan cannot access payments-secrets (404)
-  T8 — Con can access payments-secrets but not api/ui/batch
+  T7 — Dan cannot access restricted-proj-1 (404)
+  T8 — Con can access restricted-proj-1 but not proj-1/proj-2/proj-3
 """
 import os
 import sys
@@ -89,17 +89,17 @@ def assert_allowed(username, fn, test_id, description):
 def main():
     banner("PHASE 8 — Role Enforcement Tests (API-based)")
 
-    api_project = f"{config.TOP_GROUP}/live-production/payments/api"
-    ui_project = f"{config.TOP_GROUP}/live-production/payments/ui"
-    secrets_project = f"{config.TOP_GROUP}/live-production/payments/restricted/payments-secrets"
+    api_project = f"{config.TOP_GROUP}/live-production/domain-a/proj-1"
+    ui_project = f"{config.TOP_GROUP}/live-production/domain-a/proj-2"
+    secrets_project = f"{config.TOP_GROUP}/live-production/domain-a/restricted/restricted-proj-1"
 
     # ------------------------------------------------------------------
-    # T1 — Alice cannot delete payments/api
+    # T1 — Alice cannot delete domain-a/proj-1
     # ------------------------------------------------------------------
     def delete_api(gl):
         from urllib.parse import quote
         gl.delete(f"/projects/{quote(api_project, safe='')}")
-    assert_forbidden("poc-alice", delete_api, "T1", "Alice (Developer) cannot delete payments/api")
+    assert_forbidden("poc-alice", delete_api, "T1", "Alice (Developer) cannot delete domain-a/proj-1")
 
     # ------------------------------------------------------------------
     # T2 — Alice cannot modify protected branch rules
@@ -155,20 +155,20 @@ def main():
     assert_allowed("poc-bob", bob_lists_vars, "T6", "Bob (Maintainer) can list CI/CD variables")
 
     # ------------------------------------------------------------------
-    # T7 — Dan cannot see payments-secrets (confidential, different subgroup)
+    # T7 — Dan cannot see restricted-proj-1 (confidential, different subgroup)
     # ------------------------------------------------------------------
     def dan_gets_secrets(gl):
         from urllib.parse import quote
         gl.get(f"/projects/{quote(secrets_project, safe='')}")
-    assert_forbidden("poc-dan", dan_gets_secrets, "T7", "Dan cannot see confidential payments-secrets")
+    assert_forbidden("poc-dan", dan_gets_secrets, "T7", "Dan cannot see confidential restricted-proj-1")
 
     # ------------------------------------------------------------------
-    # T8 — Con can see payments-secrets
+    # T8 — Con can see restricted-proj-1
     # ------------------------------------------------------------------
     def con_gets_secrets(gl):
         from urllib.parse import quote
         gl.get(f"/projects/{quote(secrets_project, safe='')}")
-    assert_allowed("poc-con", con_gets_secrets, "T8", "Con can see payments-secrets (gl-restricted-read)")
+    assert_allowed("poc-con", con_gets_secrets, "T8", "Con can see restricted-proj-1 (gl-restricted-read)")
 
     # ------------------------------------------------------------------
     # Summary

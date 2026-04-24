@@ -10,35 +10,29 @@ flagged red in the report (still captured as evidence).
 URL paths are templates. {top} expands to config.TOP_GROUP at run time
 (picks up POC_PREFIX automatically).
 
-PATH MAPPING — design report ↔ actual API-PoC layout
-====================================================
-The reference report uses narrative names (`acme/verticals/payments/service-a`).
-The API PoC creates groups by deployment-zone and domain instead. The
-mapping below makes the two consistent so the screenshots line up with the
-verify-ui callouts in the report:
+PATH MAPPING — generic PoC layout
+=================================
+All identifiers in the PoC are intentionally generic (no business names).
+The same Path constants are reused across scenarios via f-strings, so a
+rename here propagates automatically:
 
-  Design narrative                   →  Actual PoC path
-  ─────────────────────────────────────────────────────────
-  acme                               →  acme-poc                       (top)
-  acme/verticals/payments            →  acme-poc/live-production/payments
-  acme/verticals/payments/service-a  →  acme-poc/live-production/payments/api
-  acme/verticals/payments/service-b  →  acme-poc/live-production/payments/ui
-  acme/verticals/identity            →  acme-poc/live-production/trade
-  acme/verticals/identity/service-x  →  acme-poc/live-production/trade/orders
-  acme/platform/ci-templates         →  acme-poc/platform/ci-templates
-  dan/service-a                      →  poc-dan/api                    (fork)
+  domain-a    = primary domain (used for Approach 1 hybrid + custom roles)
+  domain-b    = sibling domain (used for Approach 2 group-centric)
+  proj-1/2/3  = generic projects under each domain
+  restricted-proj-1 = the Private project under domain-a/restricted/
+  poc-dan/proj-1    = Dan's fork (personal namespace preserves project name)
 """
 from __future__ import annotations
 
 # Convenience templates — define once, reuse across scenarios.
-PAYMENTS = "{top}/live-production/payments"
-PAY_API = f"{PAYMENTS}/api"            # was: service-a
-PAY_UI = f"{PAYMENTS}/ui"              # was: service-b
-PAY_RESTRICTED = f"{PAYMENTS}/restricted/payments-secrets"
-SIBLING = "{top}/live-production/trade"      # sibling vertical = trade
-SIBLING_PROJ = f"{SIBLING}/orders"           # was: identity/service-x
+PAYMENTS = "{top}/live-production/domain-a"
+PAY_API = f"{PAYMENTS}/proj-1"
+PAY_UI = f"{PAYMENTS}/proj-2"
+PAY_RESTRICTED = f"{PAYMENTS}/restricted/restricted-proj-1"
+SIBLING = "{top}/live-production/domain-b"   # sibling domain
+SIBLING_PROJ = f"{SIBLING}/proj-1"
 CI_TEMPLATES = "{top}/platform/ci-templates"
-DAN_FORK = "poc-dan/api"                     # fork lands in personal namespace
+DAN_FORK = "poc-dan/proj-1"                  # fork lands in personal namespace
 
 # Phase mapping — which scenarios produce evidence for which API-PoC phase.
 # `phase` matches the phase ids used in run_poc.py (`02`, `04`, `07`, …).
@@ -57,7 +51,7 @@ SCENARIOS: list[dict] = [
              "path": "/groups/{top}/-/group_members"},
             {"label": "Live-production zone tree",
              "path": "/groups/{top}/live-production"},
-            {"label": "Pilot project (payments/api)",
+            {"label": "Pilot project (domain-a/proj-1)",
              "path": f"/{PAY_API}"},
             {"label": "Shared CI templates project",
              "path": f"/{CI_TEMPLATES}"},
@@ -74,9 +68,9 @@ SCENARIOS: list[dict] = [
         "shots": [
             {"label": "Top-level acme members (Dan as Guest)",
              "path": "/groups/{top}/-/group_members"},
-            {"label": "Payments subgroup members",
+            {"label": "domain-a subgroup members",
              "path": f"/groups/{PAYMENTS}/-/group_members"},
-            {"label": "payments/api members (direct + inherited)",
+            {"label": "domain-a/proj-1 members (direct + inherited)",
              "path": f"/{PAY_API}/-/project_members"},
             {"label": "Admin → Users (impersonate from here)",
              "path": "/admin/users"},
@@ -88,10 +82,10 @@ SCENARIOS: list[dict] = [
         "id": "03-baseline-access",
         "phase": "06",  # baseline becomes meaningful once Approach 2 shares are in
         "section": "Part 3 — Baseline Access Enforcement",
-        "title": "Alice's view of payments/api (no Settings, no Delete)",
+        "title": "Alice's view of domain-a/proj-1 (no Settings, no Delete)",
         "persona": "poc-alice",
         "shots": [
-            {"label": "payments/api project as Alice (Developer)",
+            {"label": "domain-a/proj-1 project as Alice (Developer)",
              "path": f"/{PAY_API}"},
             {"label": "ci-templates as Alice (Internal — visible, not writable)",
              "path": f"/{CI_TEMPLATES}"},
@@ -159,7 +153,7 @@ SCENARIOS: list[dict] = [
         "shots": [
             {"label": "Explore projects as Dan (Internal projects visible)",
              "path": "/explore/projects"},
-            {"label": "payments/api as Dan (Internal — readable, not writable)",
+            {"label": "domain-a/proj-1 as Dan (Internal — readable, not writable)",
              "path": f"/{PAY_API}"},
             {"label": "Dan's fork in his personal namespace",
              "path": f"/{DAN_FORK}"},
@@ -176,9 +170,9 @@ SCENARIOS: list[dict] = [
         "title": "Inherited access on sibling project, raised access elsewhere",
         "persona": "root",
         "shots": [
-            {"label": "payments/ui members (inherited from payments)",
+            {"label": "domain-a/proj-2 members (inherited from payments)",
              "path": f"/{PAY_UI}/-/project_members"},
-            {"label": "payments/api members (raised access)",
+            {"label": "domain-a/proj-1 members (raised access)",
              "path": f"/{PAY_API}/-/project_members"},
             {"label": "live-production tree at a glance",
              "path": "/groups/{top}/live-production"},
@@ -190,12 +184,12 @@ SCENARIOS: list[dict] = [
         "section": "Part 8 — Inheritance and Sovereignty",
         "title": "Alice has no access to a Private restricted project",
         "persona": "poc-alice",
-        # NOTE: trade/orders is Internal — Alice can read it via inner-source
+        # NOTE: domain-b/proj-1 is Internal — Alice can read it via inner-source
         # visibility, so we can't use it for an isolation test. The
-        # payments/restricted/payments-secrets project is Private and Alice
-        # is NOT a member of payments/restricted, so this is a true 404.
+        # domain-a/restricted/restricted-proj-1 project is Private and Alice
+        # is NOT a member of domain-a/restricted, so this is a true 404.
         "shots": [
-            {"label": "payments-secrets (Private) as Alice — should 404",
+            {"label": "restricted-proj-1 (Private) as Alice — should 404",
              "path": f"/{PAY_RESTRICTED}",
              "expected_status": 404},
         ],
@@ -211,11 +205,11 @@ SCENARIOS: list[dict] = [
         "shots": [
             {"label": "Top-level group audit events",
              "path": "/groups/{top}/-/audit_events"},
-            {"label": "Project-level audit events for payments/api",
+            {"label": "Project-level audit events for domain-a/proj-1",
              "path": f"/{PAY_API}/-/audit_events"},
             {"label": "Instance-wide audit events (admin)",
              "path": "/admin/audit_logs"},
-            {"label": "Members CSV export source — payments subgroup",
+            {"label": "Members CSV export source — domain-a subgroup",
              "path": f"/groups/{PAYMENTS}/-/group_members"},
         ],
     },
@@ -272,7 +266,7 @@ SCENARIOS: list[dict] = [
         "title": "Dan attempts to view upstream CI/CD settings — blocked",
         "persona": "poc-dan",
         "shots": [
-            {"label": "Upstream payments/api CI/CD settings as Dan (should be denied)",
+            {"label": "Upstream domain-a/proj-1 CI/CD settings as Dan (should be denied)",
              "path": f"/{PAY_API}/-/settings/ci_cd",
              "expected_status": 404},
         ],
@@ -283,12 +277,12 @@ SCENARIOS: list[dict] = [
         "id": "10d-job-token",
         "phase": "12",
         "section": "Scenario D — CI_JOB_TOKEN Scoping",
-        "title": "Inbound job-token allowlist on payments/api",
+        "title": "Inbound job-token allowlist on domain-a/proj-1",
         "persona": "root",
         "shots": [
-            {"label": "Job token allowlist on payments/api (target of inbound calls)",
+            {"label": "Job token allowlist on domain-a/proj-1 (target of inbound calls)",
              "path": f"/{PAY_API}/-/settings/ci_cd"},
-            {"label": "payments/ui pipeline (clone success/fail history)",
+            {"label": "domain-a/proj-2 pipeline (clone success/fail history)",
              "path": f"/{PAY_UI}/-/pipelines"},
         ],
     },
@@ -303,9 +297,9 @@ SCENARIOS: list[dict] = [
         "shots": [
             {"label": "Group-level runners on payments",
              "path": f"/groups/{PAYMENTS}/-/runners"},
-            {"label": "Project runner availability for payments/api",
+            {"label": "Project runner availability for domain-a/proj-1",
              "path": f"/{PAY_API}/-/settings/ci_cd"},
-            {"label": "Sibling trade/orders pipelines (jobs stay pending)",
+            {"label": "Sibling domain-b/proj-1 pipelines (jobs stay pending)",
              "path": f"/{SIBLING_PROJ}/-/pipelines"},
         ],
     },
@@ -318,7 +312,7 @@ SCENARIOS: list[dict] = [
         "title": "Alice (Developer) cannot edit CI/CD settings",
         "persona": "poc-alice",
         "shots": [
-            {"label": "payments/api CI/CD settings as Alice (denied — Developer can't read settings)",
+            {"label": "domain-a/proj-1 CI/CD settings as Alice (denied — Developer can't read settings)",
              "path": f"/{PAY_API}/-/settings/ci_cd",
              "expected_status": 404},
             {"label": "Repository / Protected branches as Alice (denied)",
@@ -333,7 +327,7 @@ SCENARIOS: list[dict] = [
         "title": "Bob (Maintainer) can edit CI/CD settings",
         "persona": "poc-bob",
         "shots": [
-            {"label": "payments/api CI/CD settings as Bob (full access)",
+            {"label": "domain-a/proj-1 CI/CD settings as Bob (full access)",
              "path": f"/{PAY_API}/-/settings/ci_cd"},
         ],
     },
@@ -363,7 +357,7 @@ SCENARIOS: list[dict] = [
         "shots": [
             {"label": "Group-level variables on payments",
              "path": f"/groups/{PAYMENTS}/-/settings/ci_cd"},
-            {"label": "Project-level variable on payments/api (override)",
+            {"label": "Project-level variable on domain-a/proj-1 (override)",
              "path": f"/{PAY_API}/-/settings/ci_cd"},
             {"label": "Sibling trade group variables (not visible to payments jobs)",
              "path": f"/groups/{SIBLING}/-/settings/ci_cd"},
@@ -378,7 +372,7 @@ SCENARIOS: list[dict] = [
         "title": "Same key, different values per environment scope",
         "persona": "root",
         "shots": [
-            {"label": "payments/api CI/CD variables (env-scoped entries)",
+            {"label": "domain-a/proj-1 CI/CD variables (env-scoped entries)",
              "path": f"/{PAY_API}/-/settings/ci_cd"},
             {"label": "Latest pipeline (deploy_staging vs deploy_prod logs)",
              "path": f"/{PAY_API}/-/pipelines"},

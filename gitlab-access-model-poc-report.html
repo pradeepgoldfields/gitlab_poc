@@ -41,7 +41,7 @@
 <p><strong>Scope covered:</strong> Group and subgroup hierarchy, project creation, role assignment, branch and tag protection, environment protection and deploy approvals, inner source contribution flow, access inheritance, CI/CD variables, runner scoping, job tokens, manual jobs, and scheduled pipelines. <em>Out of scope for this PoC:</em> SSO, SCIM, compliance frameworks, SIEM integration.</p>
 
 <div class="callout-info">
-<strong>How to verify each use case in the UI:</strong> Each "Outcome" block below is followed by a <em>Verify in UI</em> callout listing the exact GitLab pages a reviewer can open to confirm the result. The URLs use the narrative paths from this report (<code>acme/verticals/payments/service-a</code> etc.). Substitute <code>&lt;gitlab-host&gt;</code> with your instance hostname and replace the group/project paths with the equivalents in your environment.
+<strong>How to verify each use case in the UI:</strong> Each "Outcome" block below is followed by a <em>Verify in UI</em> callout listing the exact GitLab pages a reviewer can open to confirm the result. The URLs use the narrative paths from this report (<code>acme/verticals/domain-a/service-a</code> etc.). Substitute <code>&lt;gitlab-host&gt;</code> with your instance hostname and replace the group/project paths with the equivalents in your environment.
 </div>
 
 <hr>
@@ -151,12 +151,12 @@
   <!-- line from verticals down -->
   <path d="M 560 178 L 560 230" class="line"/>
 
-  <!-- payments subgroup -->
+  <!-- domain-a subgroup -->
   <rect x="480" y="230" width="160" height="48" rx="6" class="sub"/>
-  <text x="560" y="252" class="lbl">payments</text>
+  <text x="560" y="252" class="lbl">domain-a</text>
   <text x="560" y="268" class="lbl-small">(vertical)</text>
 
-  <!-- line from payments to two projects -->
+  <!-- line from domain-a to two projects -->
   <path d="M 560 278 L 560 310 L 470 310 L 470 340" class="line"/>
   <path d="M 560 278 L 560 310 L 650 310 L 650 340" class="line"/>
 
@@ -201,7 +201,7 @@
   <text x="100" y="80" class="lbl">Alice</text>
   <rect x="300" y="55" width="200" height="40" rx="6" class="role-dev"/>
   <text x="400" y="73" class="lbl">Developer</text>
-  <text x="400" y="89" class="lbl-small">on payments subgroup</text>
+  <text x="400" y="89" class="lbl-small">on domain-a subgroup</text>
   <rect x="580" y="55" width="160" height="40" rx="6" class="role-dev"/>
   <text x="660" y="80" class="lbl">Developer on all</text>
 
@@ -210,7 +210,7 @@
   <text x="100" y="140" class="lbl">Bob</text>
   <rect x="300" y="115" width="200" height="40" rx="6" class="role-maint"/>
   <text x="400" y="133" class="lbl">Maintainer</text>
-  <text x="400" y="149" class="lbl-small">on payments subgroup</text>
+  <text x="400" y="149" class="lbl-small">on domain-a subgroup</text>
   <rect x="580" y="115" width="160" height="40" rx="6" class="role-maint"/>
   <text x="660" y="140" class="lbl">Maintainer on all</text>
 
@@ -218,7 +218,7 @@
   <rect x="40" y="175" width="120" height="40" rx="6" class="user"/>
   <text x="100" y="200" class="lbl">Carol</text>
   <rect x="300" y="165" width="200" height="28" rx="6" class="role-rep"/>
-  <text x="400" y="183" class="lbl">Reporter on payments</text>
+  <text x="400" y="183" class="lbl">Reporter on domain-a</text>
   <rect x="300" y="195" width="200" height="28" rx="6" class="role-dev"/>
   <text x="400" y="213" class="lbl">Developer on service-a</text>
   <rect x="580" y="175" width="160" height="40" rx="6" class="role-dev"/>
@@ -251,12 +251,12 @@
 
 <h2>4. Part 1 — Hierarchy Construction</h2>
 
-<p>The PoC began by constructing the group and project hierarchy shown in Figure 1. The top-level group <code>acme</code> was created at Private visibility. Two subgroups were added beneath it: <code>platform</code> (Internal visibility, to enable inner source on shared capabilities) and <code>verticals</code> (Private). Within <code>verticals</code>, the <code>payments</code> subgroup was created as the pilot vertical. The project <code>service-a</code> was created inside <code>payments</code> as the main test project, and a second project <code>ci-templates</code> was created under <code>platform</code> to represent a shared horizontal capability.</p>
+<p>The PoC began by constructing the group and project hierarchy shown in Figure 1. The top-level group <code>acme</code> was created at Private visibility. Two subgroups were added beneath it: <code>platform</code> (Internal visibility, to enable inner source on shared capabilities) and <code>verticals</code> (Private). Within <code>verticals</code>, the <code>domain-a</code> subgroup was created as the pilot vertical. The project <code>service-a</code> was created inside <code>domain-a</code> as the main test project, and a second project <code>ci-templates</code> was created under <code>platform</code> to represent a shared horizontal capability.</p>
 
 <p>All groups and projects were initialized with default settings. Each project was created with a README to enable immediate clone and push.</p>
 
 <div class="outcome">
-<strong>Outcome:</strong> The hierarchy was constructed cleanly through the web UI. Navigation confirmed that <code>acme</code> contained <code>platform</code> and <code>verticals</code>, that <code>verticals</code> contained <code>payments</code>, and that projects appeared in the correct parents.
+<strong>Outcome:</strong> The hierarchy was constructed cleanly through the web UI. Navigation confirmed that <code>acme</code> contained <code>platform</code> and <code>verticals</code>, that <code>verticals</code> contained <code>domain-a</code>, and that projects appeared in the correct parents.
 </div>
 
 <div class="verify-ui">
@@ -264,7 +264,7 @@
 <ul>
   <li>Top-level group tree: <code>https://&lt;gitlab-host&gt;/acme</code></li>
   <li>Subgroup overview: <code>https://&lt;gitlab-host&gt;/acme/verticals</code></li>
-  <li>Pilot project: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a</code></li>
+  <li>Pilot project: <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a</code></li>
   <li>Shared CI templates: <code>https://&lt;gitlab-host&gt;/acme/platform/ci-templates</code></li>
 </ul>
 </div>
@@ -275,9 +275,9 @@
 
 <p>Once the hierarchy existed, the four test users were invited and assigned roles per Figure 2.</p>
 
-<p>Alice was added to <code>acme/verticals/payments</code> as a Developer. Bob was added to the same subgroup as a Maintainer. Carol was added to <code>payments</code> as a Reporter and additionally to <code>service-a</code> directly as a Developer, to verify that access can be elevated at a lower level in the tree. Dan was added only at the top-level <code>acme</code> as a Guest, simulating an engineer from another part of the organization who should be able to discover inner-source projects but have no default contribution rights.</p>
+<p>Alice was added to <code>acme/verticals/domain-a</code> as a Developer. Bob was added to the same subgroup as a Maintainer. Carol was added to <code>domain-a</code> as a Reporter and additionally to <code>service-a</code> directly as a Developer, to verify that access can be elevated at a lower level in the tree. Dan was added only at the top-level <code>acme</code> as a Guest, simulating an engineer from another part of the organization who should be able to discover inner-source projects but have no default contribution rights.</p>
 
-<p>The Members view of <code>service-a</code> confirmed Carol held two listings: "Reporter (inherited from payments)" and "Developer (direct)", with GitLab applying the higher role.</p>
+<p>The Members view of <code>service-a</code> confirmed Carol held two listings: "Reporter (inherited from domain-a)" and "Developer (direct)", with GitLab applying the higher role.</p>
 
 <div class="outcome">
 <strong>Outcome:</strong> All four users received their assigned roles. Inheritance and elevation both behaved as expected. Logging in as each user in separate browser sessions confirmed they saw exactly the projects they should and nothing more.
@@ -287,8 +287,8 @@
 <strong>Verify in UI:</strong>
 <ul>
   <li>Top-level group members (Dan as Guest): <code>https://&lt;gitlab-host&gt;/groups/acme/-/group_members</code></li>
-  <li>Payments subgroup members (Alice Dev, Bob Maint, Carol Reporter): <code>https://&lt;gitlab-host&gt;/groups/acme/verticals/payments/-/group_members</code></li>
-  <li>service-a project members (Carol shows Reporter inherited + Developer direct): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/project_members</code></li>
+  <li>domain-a subgroup members (Alice Dev, Bob Maint, Carol Reporter): <code>https://&lt;gitlab-host&gt;/groups/acme/verticals/domain-a/-/group_members</code></li>
+  <li>service-a project members (Carol shows Reporter inherited + Developer direct): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/project_members</code></li>
   <li>Admin → Users (impersonate to log in as each persona): <code>https://&lt;gitlab-host&gt;/admin/users</code></li>
 </ul>
 </div>
@@ -310,8 +310,8 @@
 <div class="verify-ui">
 <strong>Verify in UI:</strong>
 <ul>
-  <li>service-a project overview (Alice should see code, no Settings): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a</code></li>
-  <li>Project settings (403 for Alice, accessible to Bob): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/edit</code></li>
+  <li>service-a project overview (Alice should see code, no Settings): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a</code></li>
+  <li>Project settings (403 for Alice, accessible to Bob): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/edit</code></li>
   <li>ci-templates as Carol (clone OK because Internal, push blocked): <code>https://&lt;gitlab-host&gt;/acme/platform/ci-templates</code></li>
 </ul>
 </div>
@@ -413,10 +413,10 @@
 <div class="verify-ui">
 <strong>Verify in UI:</strong>
 <ul>
-  <li>Protected branches config (main → Maintainers can merge, no one can push): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/repository#js-protected-branches-settings</code></li>
-  <li>MR approval rules (prevent author approval, min approvals): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/merge_requests</code></li>
-  <li>Open / merged MRs and approval state: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/merge_requests</code></li>
-  <li>CODEOWNERS file in repo root: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/blob/main/CODEOWNERS</code></li>
+  <li>Protected branches config (main → Maintainers can merge, no one can push): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/settings/repository#js-protected-branches-settings</code></li>
+  <li>MR approval rules (prevent author approval, min approvals): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/settings/merge_requests</code></li>
+  <li>Open / merged MRs and approval state: <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/merge_requests</code></li>
+  <li>CODEOWNERS file in repo root: <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/blob/main/CODEOWNERS</code></li>
 </ul>
 </div>
 
@@ -487,10 +487,10 @@
 <div class="verify-ui">
 <strong>Verify in UI:</strong>
 <ul>
-  <li>Environments list with protection badges: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/environments</code></li>
-  <li>Protected environments config (staging + prod, allowed deployers, approvers): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd#js-protected-environments-settings</code></li>
-  <li>Pipeline showing manual deploy_prod gated for Carol: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/pipelines</code></li>
-  <li>Deployment approvals on prod: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/environments?scope=available</code></li>
+  <li>Environments list with protection badges: <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/environments</code></li>
+  <li>Protected environments config (staging + prod, allowed deployers, approvers): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/settings/ci_cd#js-protected-environments-settings</code></li>
+  <li>Pipeline showing manual deploy_prod gated for Carol: <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/pipelines</code></li>
+  <li>Deployment approvals on prod: <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/environments?scope=available</code></li>
 </ul>
 </div>
 
@@ -509,8 +509,8 @@
 <div class="verify-ui">
 <strong>Verify in UI:</strong>
 <ul>
-  <li>Protected tags config (v* pattern → Maintainers): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/repository#js-protected-tags-settings</code></li>
-  <li>Tag list (v1.0 created by Bob): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/tags</code></li>
+  <li>Protected tags config (v* pattern → Maintainers): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/settings/repository#js-protected-tags-settings</code></li>
+  <li>Tag list (v1.0 created by Bob): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/tags</code></li>
 </ul>
 </div>
 
@@ -518,7 +518,7 @@
 
 <h2>10. Part 7 — Inner Source Contribution</h2>
 
-<p>Inner source was validated using Dan as the external contributor. Dan held only Guest on the top-level <code>acme</code> and had no role on <code>payments</code> or <code>service-a</code>.</p>
+<p>Inner source was validated using Dan as the external contributor. Dan held only Guest on the top-level <code>acme</code> and had no role on <code>domain-a</code> or <code>service-a</code>.</p>
 
 <p>To enable discovery, <code>service-a</code> was switched from Private to Internal (along with its parent subgroups, as required by the inheritance rule that a child cannot be more visible than its parent). Dan was then able to find <code>service-a</code> via search, browse it, and fork it into his personal namespace.</p>
 
@@ -566,7 +566,7 @@
 <div class="caption">Figure 5 — Inner source contribution via fork and MR, with no write access granted.</div>
 </div>
 
-<p>Dan cloned his fork, committed a small change adding himself to a <code>CONTRIBUTORS.md</code> file, pushed to his fork, and opened a merge request targeting <code>acme/verticals/payments/service-a:main</code>. He then attempted to push the same branch directly to the upstream repository. This push was rejected.</p>
+<p>Dan cloned his fork, committed a small change adding himself to a <code>CONTRIBUTORS.md</code> file, pushed to his fork, and opened a merge request targeting <code>acme/verticals/domain-a/service-a:main</code>. He then attempted to push the same branch directly to the upstream repository. This push was rejected.</p>
 
 <p>Bob reviewed, approved, and merged the MR. Dan's change landed on <code>main</code> without Dan ever having write access to the upstream project.</p>
 
@@ -577,10 +577,10 @@
 <div class="verify-ui">
 <strong>Verify in UI:</strong>
 <ul>
-  <li>service-a visibility set to Internal (logged in as Dan should be discoverable): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/edit#js-general-project-settings</code></li>
+  <li>service-a visibility set to Internal (logged in as Dan should be discoverable): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/edit#js-general-project-settings</code></li>
   <li>Explore projects (Dan's view, sees Internal projects): <code>https://&lt;gitlab-host&gt;/explore/projects</code></li>
   <li>Dan's fork in his personal namespace: <code>https://&lt;gitlab-host&gt;/dan/service-a</code></li>
-  <li>MR opened from fork to upstream: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/merge_requests?scope=all&amp;state=all</code></li>
+  <li>MR opened from fork to upstream: <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/merge_requests?scope=all&amp;state=all</code></li>
 </ul>
 </div>
 
@@ -588,11 +588,11 @@
 
 <h2>11. Part 8 — Inheritance and Sovereignty</h2>
 
-<p>To verify inheritance behavior, a second project <code>service-b</code> was created inside <code>payments</code> without any direct member assignment. Alice was able to clone and push branches to <code>service-b</code> immediately — access inherited from her Developer role on <code>payments</code>.</p>
+<p>To verify inheritance behavior, a second project <code>service-b</code> was created inside <code>domain-a</code> without any direct member assignment. Alice was able to clone and push branches to <code>service-b</code> immediately — access inherited from her Developer role on <code>domain-a</code>.</p>
 
-<p>To verify sibling isolation, a second vertical <code>acme/verticals/identity</code> was created with a project <code>service-x</code> inside. Alice had no access to this sibling vertical despite her role on <code>payments</code>. The project was invisible in her navigation and direct URL access returned 404.</p>
+<p>To verify sibling isolation, a second vertical <code>acme/verticals/identity</code> was created with a project <code>service-x</code> inside. Alice had no access to this sibling vertical despite her role on <code>domain-a</code>. The project was invisible in her navigation and direct URL access returned 404.</p>
 
-<p>To verify access elevation at lower levels, Alice was granted Maintainer specifically on <code>service-a</code>. Her effective role on <code>service-a</code> became Maintainer (the higher role), while she remained Developer on <code>payments</code> overall and Developer on <code>service-b</code>.</p>
+<p>To verify access elevation at lower levels, Alice was granted Maintainer specifically on <code>service-a</code>. Her effective role on <code>service-a</code> became Maintainer (the higher role), while she remained Developer on <code>domain-a</code> overall and Developer on <code>service-b</code>.</p>
 
 <p>An attempt to reduce Alice's access on <code>service-a</code> to Guest was rejected by GitLab, which preserved her inherited Developer role from the parent group.</p>
 
@@ -614,10 +614,10 @@
   <rect x="320" y="20" width="140" height="38" rx="6" class="grp"/>
   <text x="390" y="44" class="lbl">verticals</text>
 
-  <!-- payments -->
+  <!-- domain-a -->
   <path d="M 390 58 L 390 80 L 200 80 L 200 100" class="line"/>
   <rect x="100" y="100" width="200" height="50" rx="6" class="grp"/>
-  <text x="200" y="120" class="lbl">payments</text>
+  <text x="200" y="120" class="lbl">domain-a</text>
   <rect x="120" y="125" width="160" height="20" rx="3" class="badge-dev"/>
   <text x="200" y="140" class="lbl-small">Alice: Developer (direct)</text>
 
@@ -659,8 +659,8 @@
 <div class="verify-ui">
 <strong>Verify in UI:</strong>
 <ul>
-  <li>service-b members (Alice listed as Developer, inherited from payments): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-b/-/project_members</code></li>
-  <li>service-a members (Alice raised to Maintainer direct): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/project_members</code></li>
+  <li>service-b members (Alice listed as Developer, inherited from domain-a): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-b/-/project_members</code></li>
+  <li>service-a members (Alice raised to Maintainer direct): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/project_members</code></li>
   <li>identity sibling vertical (Alice should get 404 when impersonated): <code>https://&lt;gitlab-host&gt;/acme/verticals/identity/service-x</code></li>
   <li>Verticals tree at a glance: <code>https://&lt;gitlab-host&gt;/groups/acme/verticals</code></li>
 </ul>
@@ -674,7 +674,7 @@
 
 <p>The project-level audit log for <code>service-a</code> showed MR approvals, merges, and setting changes specific to that project.</p>
 
-<p>The Members view of <code>acme/verticals/payments</code> was exported as a CSV, producing a clear list of members with their roles and whether access was direct or inherited. This export serves as the baseline access review artifact for the vertical.</p>
+<p>The Members view of <code>acme/verticals/domain-a</code> was exported as a CSV, producing a clear list of members with their roles and whether access was direct or inherited. This export serves as the baseline access review artifact for the vertical.</p>
 
 <div class="outcome">
 <strong>Outcome:</strong> Significant access and CI events were captured in the audit log with sufficient detail for review. Membership was exportable for formal access reviews.
@@ -684,9 +684,9 @@
 <strong>Verify in UI:</strong>
 <ul>
   <li>Top-level group audit events: <code>https://&lt;gitlab-host&gt;/groups/acme/-/audit_events</code></li>
-  <li>Project-level audit events for service-a: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/audit_events</code></li>
+  <li>Project-level audit events for service-a: <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/audit_events</code></li>
   <li>Instance-wide audit events (admin): <code>https://&lt;gitlab-host&gt;/admin/audit_logs</code></li>
-  <li>Members CSV export from payments subgroup: <code>https://&lt;gitlab-host&gt;/groups/acme/verticals/payments/-/group_members</code> (use Export as CSV button)</li>
+  <li>Members CSV export from domain-a subgroup: <code>https://&lt;gitlab-host&gt;/groups/acme/verticals/domain-a/-/group_members</code> (use Export as CSV button)</li>
 </ul>
 </div>
 
@@ -780,8 +780,8 @@
 <div class="verify-ui">
 <strong>Verify in UI:</strong>
 <ul>
-  <li>CI/CD variables (PROD_SECRET protected+masked, env scope prod; DEV_CONFIG unprotected): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd#js-cicd-variables-settings</code></li>
-  <li>Pipeline list (compare debug job logs across feature vs main): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/pipelines</code></li>
+  <li>CI/CD variables (PROD_SECRET protected+masked, env scope prod; DEV_CONFIG unprotected): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/settings/ci_cd#js-cicd-variables-settings</code></li>
+  <li>Pipeline list (compare debug job logs across feature vs main): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/pipelines</code></li>
 </ul>
 </div>
 
@@ -798,8 +798,8 @@
 <div class="verify-ui">
 <strong>Verify in UI:</strong>
 <ul>
-  <li>Latest pipeline showing both manual jobs (deploy_prod gated, run_adhoc open): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/pipelines</code></li>
-  <li>Protected environments (prod allowed list = Carol only): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd#js-protected-environments-settings</code></li>
+  <li>Latest pipeline showing both manual jobs (deploy_prod gated, run_adhoc open): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/pipelines</code></li>
+  <li>Protected environments (prod allowed list = Carol only): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/settings/ci_cd#js-protected-environments-settings</code></li>
 </ul>
 </div>
 
@@ -818,9 +818,9 @@
 <div class="verify-ui">
 <strong>Verify in UI:</strong>
 <ul>
-  <li>MR pipeline (run requires approval, debug job log shows PROD_SECRET blank): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/merge_requests?scope=all&amp;state=all</code></li>
-  <li>Merge request settings — fork pipeline approval: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/merge_requests</code></li>
-  <li>Dan's view of upstream CI/CD settings (should be blocked): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd</code></li>
+  <li>MR pipeline (run requires approval, debug job log shows PROD_SECRET blank): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/merge_requests?scope=all&amp;state=all</code></li>
+  <li>Merge request settings — fork pipeline approval: <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/settings/merge_requests</code></li>
+  <li>Dan's view of upstream CI/CD settings (should be blocked): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/settings/ci_cd</code></li>
 </ul>
 </div>
 
@@ -837,16 +837,16 @@
 <div class="verify-ui">
 <strong>Verify in UI:</strong>
 <ul>
-  <li>Job token allowlist on service-a (target of inbound calls): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd#js-token-access</code></li>
-  <li>service-b pipeline (success/fail of clone job over time): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-b/-/pipelines</code></li>
+  <li>Job token allowlist on service-a (target of inbound calls): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/settings/ci_cd#js-token-access</code></li>
+  <li>service-b pipeline (success/fail of clone job over time): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-b/-/pipelines</code></li>
 </ul>
 </div>
 
 <h3>13.5 Scenario E — Runner Scoping</h3>
 
-<p>A group-level runner was registered under <code>acme/verticals/payments</code> with the tag <code>payments-only</code> and the Protected flag enabled. A job in <code>service-a</code> tagged with <code>payments-only</code> ran successfully on <code>main</code> but remained in pending state when pushed to a feature branch, because the runner only picked up jobs from protected refs.</p>
+<p>A group-level runner was registered under <code>acme/verticals/domain-a</code> with the tag <code>domain-a-only</code> and the Protected flag enabled. A job in <code>service-a</code> tagged with <code>domain-a-only</code> ran successfully on <code>main</code> but remained in pending state when pushed to a feature branch, because the runner only picked up jobs from protected refs.</p>
 
-<p>A second test project was created in <code>acme/verticals/identity</code> with an identical job tagged <code>payments-only</code>. The job remained pending indefinitely — the runner, being group-scoped to <code>payments</code>, did not see jobs from sibling verticals.</p>
+<p>A second test project was created in <code>acme/verticals/identity</code> with an identical job tagged <code>domain-a-only</code>. The job remained pending indefinitely — the runner, being group-scoped to <code>domain-a</code>, did not see jobs from sibling verticals.</p>
 
 <div class="outcome">
 <strong>Outcome:</strong> Group-scoped runners correctly refused jobs from other groups. Protected runners correctly refused jobs from unprotected refs. Runner scoping provides a clean layer of CI isolation.
@@ -855,8 +855,8 @@
 <div class="verify-ui">
 <strong>Verify in UI:</strong>
 <ul>
-  <li>Group-level runners (payments-only tag, Protected flag): <code>https://&lt;gitlab-host&gt;/groups/acme/verticals/payments/-/runners</code></li>
-  <li>Project runner availability for service-a (which runners are visible): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd#js-runners-settings</code></li>
+  <li>Group-level runners (domain-a-only tag, Protected flag): <code>https://&lt;gitlab-host&gt;/groups/acme/verticals/domain-a/-/runners</code></li>
+  <li>Project runner availability for service-a (which runners are visible): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/settings/ci_cd#js-runners-settings</code></li>
   <li>identity sibling project pipeline (jobs stay pending — no eligible runner): <code>https://&lt;gitlab-host&gt;/acme/verticals/identity/service-x/-/pipelines</code></li>
 </ul>
 </div>
@@ -872,8 +872,8 @@
 <div class="verify-ui">
 <strong>Verify in UI:</strong>
 <ul>
-  <li>CI/CD settings (visible to Bob, hidden/read-only for Alice): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd</code></li>
-  <li>Repository / Protected branches (rule editing requires Maintainer): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/repository</code></li>
+  <li>CI/CD settings (visible to Bob, hidden/read-only for Alice): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/settings/ci_cd</code></li>
+  <li>Repository / Protected branches (rule editing requires Maintainer): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/settings/repository</code></li>
 </ul>
 </div>
 
@@ -892,14 +892,14 @@
 <div class="verify-ui">
 <strong>Verify in UI:</strong>
 <ul>
-  <li>Pipeline schedules (owner column, Take ownership control): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/pipeline_schedules</code></li>
-  <li>Pipeline history filtered to scheduled runs (success/failure under reduced role): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/pipelines?scope=all&amp;source=schedule</code></li>
+  <li>Pipeline schedules (owner column, Take ownership control): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/pipeline_schedules</code></li>
+  <li>Pipeline history filtered to scheduled runs (success/failure under reduced role): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/pipelines?scope=all&amp;source=schedule</code></li>
 </ul>
 </div>
 
 <h3>13.8 Scenario H — Variable Inheritance and Override</h3>
 
-<p>A group-level variable <code>PAYMENTS_SHARED</code> was set at <code>acme/verticals/payments</code>. Jobs in both <code>service-a</code> and <code>service-b</code> were able to read it — confirming downward inheritance.</p>
+<p>A group-level variable <code>SHARED_VAR</code> was set at <code>acme/verticals/domain-a</code>. Jobs in both <code>service-a</code> and <code>service-b</code> were able to read it — confirming downward inheritance.</p>
 
 <p>A project-level variable with the same key was then added to <code>service-a</code> with a different value. Jobs in <code>service-a</code> then read the project-level value, while <code>service-b</code> continued to read the group-level value. Project variables override group variables at the project scope.</p>
 
@@ -912,10 +912,10 @@
 <div class="verify-ui">
 <strong>Verify in UI:</strong>
 <ul>
-  <li>Group-level variables on payments (PAYMENTS_SHARED): <code>https://&lt;gitlab-host&gt;/groups/acme/verticals/payments/-/settings/ci_cd#js-cicd-variables-settings</code></li>
-  <li>Project-level variable on service-a (override of same key): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd#js-cicd-variables-settings</code></li>
-  <li>service-b job log (still reads inherited group value): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-b/-/pipelines</code></li>
-  <li>Sibling identity group variables (not visible to payments jobs): <code>https://&lt;gitlab-host&gt;/groups/acme/verticals/identity/-/settings/ci_cd#js-cicd-variables-settings</code></li>
+  <li>Group-level variables on domain-a (SHARED_VAR): <code>https://&lt;gitlab-host&gt;/groups/acme/verticals/domain-a/-/settings/ci_cd#js-cicd-variables-settings</code></li>
+  <li>Project-level variable on service-a (override of same key): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/settings/ci_cd#js-cicd-variables-settings</code></li>
+  <li>service-b job log (still reads inherited group value): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-b/-/pipelines</code></li>
+  <li>Sibling identity group variables (not visible to domain-a jobs): <code>https://&lt;gitlab-host&gt;/groups/acme/verticals/identity/-/settings/ci_cd#js-cicd-variables-settings</code></li>
 </ul>
 </div>
 
@@ -930,9 +930,9 @@
 <div class="verify-ui">
 <strong>Verify in UI:</strong>
 <ul>
-  <li>service-a CI/CD variables (two API_KEY entries with different env scopes): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd#js-cicd-variables-settings</code></li>
-  <li>Latest pipeline (deploy_staging vs deploy_prod logs show different API_KEY): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/pipelines</code></li>
-  <li>Environments page (staging + prod): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/environments</code></li>
+  <li>service-a CI/CD variables (two API_KEY entries with different env scopes): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/settings/ci_cd#js-cicd-variables-settings</code></li>
+  <li>Latest pipeline (deploy_staging vs deploy_prod logs show different API_KEY): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/pipelines</code></li>
+  <li>Environments page (staging + prod): <code>https://&lt;gitlab-host&gt;/acme/verticals/domain-a/service-a/-/environments</code></li>
 </ul>
 </div>
 

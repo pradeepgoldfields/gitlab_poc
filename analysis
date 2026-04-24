@@ -4,7 +4,7 @@ GitLab Role
 
 	Minimal Access	Default	Top Level Group	
 read only user for non protected repos 
-	devhat_w	P2P_GS_DevOps_<>_MinimalAccess
+	devhat_w	IAM_DevOps_<>_MinimalAccess
 
 	Guest	Default	N.A.	
 read user within group 
@@ -16,7 +16,7 @@ read user within group
 	Reporter	Default	Project	
 	<app>_r	
 
-P2P_GS_DevOps_<group-name>_Reporter
+IAM_DevOps_<group-name>_Reporter
 
 <app>_r
 
@@ -24,27 +24,27 @@ P2P_GS_DevOps_<group-name>_Reporter
 GS Partner	Security Manager	Default	Group	
 permissions on merge policies to protected branches ?
 waiver roles for security vulnerabilities ?
-	P2P_GS_CDRO_GSPartner	P2P_GS_DevOps_<group-name>_SecurityManager
+	IAM_CDRO_GSPartner	IAM_DevOps_<group-name>_SecurityManager
 Developer	Developer	Default	Project	
 can't commit to non protected branches ?
 	<app>_w	
 
-P2P_GS_DevOps_<group-name>_Developer
+IAM_DevOps_<group-name>_Developer
 
 <app>_w
 
 
 Promoter	Promoter	Custom	Group	
-	P2P_GS_CDRO_<cdro-project-name>_Promoter	P2P_GS_DevOps_<group-name>_Promoter
+	IAM_CDRO_<cdro-project-name>_Promoter	IAM_DevOps_<group-name>_Promoter
 Operator	Operator	Custom	Group	
 The operator access needs to customized in specific to specific branches & pipeline that are prod type (e.g prod)
-	P2P_GS_CDRO_<cdro-project-name>_Operator	P2P_GS_DevOps_<group-name>_Operator
+	IAM_CDRO_<cdro-project-name>_Operator	IAM_DevOps_<group-name>_Operator
 Maintainer	Maintainer	Default	Group	
 can commit or merge to protected branches
 disable project settings like merge policies etc (we need to decide how to not allow this )
-	P2P_GS_Bitbucket_Admin	P2P_GS_DevOps_<group-name>_Maintainer 
+	IAM_Bitbucket_Admin	IAM_DevOps_<group-name>_Maintainer 
 Owner	Owner	Deafult	Top Level Group	
-	P2P_GS_Bitbucket_Admin	P2P_GS_DevOps_Owner
+	IAM_Bitbucket_Admin	IAM_DevOps_Owner
 Purpose
 
 This document defines the reference access model for GitLab, including its integration with LDAP and IAM.
@@ -158,13 +158,13 @@ Top-Level Group (Owner: P2P)
 
 Identity & Access Management
 SSCAM (temporary, project-level)
-├── payments-api_w / _r
-├── payments-ui_w / _r
-└── payments-batch_w / _r
+├── domain-a-proj-1_w / _r
+├── domain-a-proj-2_w / _r
+└── domain-a-batch_w / _r
 
 SailPoint (stable, group-level)
 ├── gl-restricted-read
-└── gl-payments-dev   (optional)
+└── gl-domain-a-dev   (optional)
 
 
 Access mapping
@@ -196,21 +196,21 @@ A fully GitLab‑native authorization model where access is structured around st
 
 Visual – How It Looks in GitLab
 GitLab
-└── payments/                     (domain / product line)
+└── domain-a/                     (domain / product line)
     ├── api/
-    │   ├── payments-api
-    │   └── payments-batch
+    │   ├── domain-a-api
+    │   └── domain-a-batch
     ├── ui/
-    │   └── payments-ui
+    │   └── domain-a-ui
     └── confidential/
-        └── payments-secrets
+        └── restricted-proj-1
 
 Identity & Access Management
 SailPoint (single IAM system)
-├── gl-payments-read
-├── gl-payments-dev
-├── gl-payments-maint
-└── gl-payments-owner
+├── gl-domain-a-read
+├── gl-domain-a-dev
+├── gl-domain-a-maint
+└── gl-domain-a-owner
 
 
 All access is assigned at GitLab group level and inherited

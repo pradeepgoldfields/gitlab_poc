@@ -3,8 +3,8 @@
 Phase 9 — Custom Role Assignment
 
 Assigns the three custom roles (Promoter, Operator, Security Manager) to their
-P2P IAM groups on payments/api, then shares those groups with the project using
-the custom role IDs.
+P2P IAM groups on domain-a/proj-1, then shares those groups with the project
+using the custom role IDs.
 
 Note: the Operator layered restriction requires protected environment/branch
 allow-lists, which were set up in Phase 7. This phase completes the Custom Role
@@ -22,18 +22,18 @@ from gitlab_client import GitLabClient, banner, step, done, warn, fail, require_
 CUSTOM_ROLE_ASSIGNMENTS = [
     {
         "custom_role_name": _suffix("Promoter"),
-        "iam_group": "iam-sim/p2p/P2P_GS_DevOps_payments_Promoter",
-        "target_project": "live-production/payments/api",
+        "iam_group": "iam-sim/p2p/IAM_DevOps_domain-a_Promoter",
+        "target_project": "live-production/domain-a/proj-1",
     },
     {
         "custom_role_name": _suffix("Operator"),
-        "iam_group": "iam-sim/p2p/P2P_GS_DevOps_payments_Operator",
-        "target_project": "live-production/payments/api",
+        "iam_group": "iam-sim/p2p/IAM_DevOps_domain-a_Operator",
+        "target_project": "live-production/domain-a/proj-1",
     },
     {
         "custom_role_name": _suffix("Security Manager"),
-        "iam_group": "iam-sim/p2p/P2P_GS_DevOps_payments_SecurityManager",
-        "target_project": "live-production/payments/api",
+        "iam_group": "iam-sim/p2p/IAM_DevOps_domain-a_SecurityManager",
+        "target_project": "live-production/domain-a/proj-1",
     },
 ]
 
@@ -95,7 +95,7 @@ def main():
             fail(f"Share failed for {assignment['custom_role_name']}: {e}")
 
     banner("PHASE 9 COMPLETE", char="-")
-    done("Custom roles are assigned on payments/api.")
+    done("Custom roles are assigned on domain-a/proj-1.")
     done("Manual tests required for full validation — see execution guide Phase 9.")
     done("Next: run phase_10_inner_source.py")
     return 0

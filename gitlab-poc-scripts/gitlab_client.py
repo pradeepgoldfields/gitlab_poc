@@ -391,11 +391,24 @@ class GitLabClient:
             pass
 
         access_entries = list(deploy_access_levels or [])
+        # GitLab 18.x quirk: `protected_environments` POST rejects entries
+        # that carry `user_id` (returns 422 "Deploy access levels is too
+        # short"), and the corresponding PUT silently ignores them too. Until
+        # this is restored, fall back to a Maintainer (40) baseline whenever
+        # we'd otherwise want a user-scoped deployer — and emit a step note
+        # so the operator knows to add the user via the UI for full fidelity.
         for username in deploy_access_users or []:
             user = self.find_user_by_username(username)
             if not user:
                 raise GitLabError(f"User {username} not found for protected env {env_name}")
-            access_entries.append({"user_id": user["id"]})
+            access_entries.append({"access_level": 40})
+            api_call_log.step(
+                f"Protected env {env_name}: GitLab 18 API doesn't accept "
+                f"user_id-scoped deploy entries; using Maintainer-only floor. "
+                f"Add {username} as user-specific allowed deployer in the UI: "
+                f"{project_path} → Settings → CI/CD → Protected environments.",
+                level="warn",
+            )
 
         payload = {"name": env_name, "deploy_access_levels": access_entries}
         if approval_rules:
