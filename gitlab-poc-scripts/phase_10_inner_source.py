@@ -26,8 +26,8 @@ def client_for_env(var):
 def main():
     banner("PHASE 10 — Inner Source & Confidential Tests")
 
-    api_project = f"{config.TOP_GROUP}/live-production/domain-a/proj-1"
-    secrets_project = f"{config.TOP_GROUP}/live-production/domain-a/restricted/restricted-proj-1"
+    api_project = f"{config.TOP_GROUP}/domain-a/proj-1"
+    secrets_project = f"{config.TOP_GROUP}/domain-a/restricted/restricted-proj-1"
 
     dan = client_for_env("POC_DAN_TOKEN")
     con = client_for_env("POC_CON_TOKEN")

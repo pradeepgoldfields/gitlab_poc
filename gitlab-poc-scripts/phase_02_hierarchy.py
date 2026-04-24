@@ -2,14 +2,18 @@
 """
 Phase 2 — Hierarchy Skeleton
 
-Creates the deployment-zone hierarchy:
+Creates the FLAT business-domain hierarchy (analysis-aligned):
   acme-poc/
-    live-production/domain-a/{proj-1,proj-2,proj-3} + restricted/restricted-proj-1
-    live-production/domain-b/{proj-1,proj-2,proj-3}
-    live-cloud-landing-zone/domain-a
-    non-live-enterprise/domain-a
-    iam-sim/     (Private)
+    domain-a/{proj-1,proj-2,proj-3} + restricted/restricted-proj-1
+    domain-b/{proj-1,proj-2,proj-3}
+    iam-sim/     (Private — simulated LDAP groups)
     platform/ci-templates
+
+Deployment-model isolation (live-prod / non-live / cloud landing zone) is
+NOT a group-nesting concern in this hierarchy. It's expressed instead via:
+  * environment-scoped CI variables (Phase 11)
+  * protected environments named after the zone (Phase 7)
+  * group-level runners tagged by zone (Phase 11 manual step)
 
 Idempotent — safe to re-run.
 
@@ -30,13 +34,6 @@ def main():
     top = gl.ensure_group(config.TOP_GROUP, visibility=config.TOP_GROUP_VISIBILITY)
     done(f"{config.TOP_GROUP} (id={top['id']})")
 
-    # Deployment zones
-    for zone in config.DEPLOYMENT_ZONES:
-        path = f"{config.TOP_GROUP}/{zone['path']}"
-        step(f"Ensuring zone: {path}")
-        gl.ensure_group(path, visibility=zone["visibility"])
-        done(path)
-
     # IAM simulation container (Private)
     iam_path = f"{config.TOP_GROUP}/{config.IAM_SIM_GROUP}"
     step(f"Ensuring IAM simulation container: {iam_path} (Private)")
@@ -49,16 +46,20 @@ def main():
     gl.ensure_group(plat_path, visibility="internal")
     done(plat_path)
 
-    # Domains
-    for zone, domains in config.DOMAINS.items():
-        for domain in domains:
-            path = f"{config.TOP_GROUP}/{zone}/{domain}"
-            step(f"Ensuring domain: {path}")
-            gl.ensure_group(path, visibility="internal")
-            done(path)
+    # Business domains — flat under top group
+    for domain in config.DOMAINS:
+        path = f"{config.TOP_GROUP}/{domain}"
+        step(f"Ensuring domain: {path}")
+        gl.ensure_group(path, visibility="internal")
+        done(path)
 
-    # Restricted subgroups (always Private)
-    for rpath in ["live-production/domain-a/restricted", "live-production/domain-b/restricted"]:
+    # Restricted subgroups (always Private). Created on demand for any
+    # domain that has a `<domain>/restricted` entry in PROJECTS.
+    restricted_paths = sorted({
+        parent for parent in config.PROJECTS
+        if parent.endswith("/restricted")
+    })
+    for rpath in restricted_paths:
         full = f"{config.TOP_GROUP}/{rpath}"
         step(f"Ensuring restricted subgroup (Private): {full}")
         gl.ensure_group(full, visibility="private")

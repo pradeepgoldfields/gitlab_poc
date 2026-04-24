@@ -23,17 +23,17 @@ CUSTOM_ROLE_ASSIGNMENTS = [
     {
         "custom_role_name": _suffix("Promoter"),
         "iam_group": "iam-sim/p2p/IAM_DevOps_domain-a_Promoter",
-        "target_project": "live-production/domain-a/proj-1",
+        "target_project": "domain-a/proj-1",
     },
     {
         "custom_role_name": _suffix("Operator"),
         "iam_group": "iam-sim/p2p/IAM_DevOps_domain-a_Operator",
-        "target_project": "live-production/domain-a/proj-1",
+        "target_project": "domain-a/proj-1",
     },
     {
         "custom_role_name": _suffix("Security Manager"),
         "iam_group": "iam-sim/p2p/IAM_DevOps_domain-a_SecurityManager",
-        "target_project": "live-production/domain-a/proj-1",
+        "target_project": "domain-a/proj-1",
     },
 ]
 

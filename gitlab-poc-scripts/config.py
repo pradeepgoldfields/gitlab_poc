@@ -72,13 +72,18 @@ TOP_GROUP = _suffix(os.environ.get("POC_TOP_GROUP", "acme-poc"))
 TOP_GROUP_VISIBILITY = os.environ.get("POC_TOP_GROUP_VISIBILITY", "internal")   # internal | private | public
 
 # ---------------------------------------------------------------------------
-# Deployment-zone subgroups (from the design)
+# Top-level peer groups under acme-poc.
 # ---------------------------------------------------------------------------
-DEPLOYMENT_ZONES = [
-    {"path": "live-production",           "visibility": "internal"},
-    {"path": "live-cloud-landing-zone",   "visibility": "internal"},
-    {"path": "non-live-enterprise", "visibility": "internal"},
-]
+# The hierarchy is intentionally FLAT per the analysis: business domains
+# (long-lived application groupings) sit directly under the top group.
+# Deployment-model isolation (live-production vs non-live, cloud landing
+# zone, etc.) is NOT a group-nesting concern — it's expressed instead via:
+#   * group-level runners tagged by zone (Phase 11)
+#   * environment-scoped CI variables (Phase 11 — PROD_DEPLOY_TOKEN
+#     scoped to environment_scope=prod)
+#   * protected environments named after the zone (Phase 7)
+# This keeps each app in exactly one place in the tree, regardless of how
+# many environments it deploys to.
 
 # Simulated IAM container (Private, holds the simulated LDAP groups)
 IAM_SIM_GROUP = "iam-sim"
@@ -87,20 +92,20 @@ IAM_SIM_GROUP = "iam-sim"
 PLATFORM_GROUP = "platform"
 
 # ---------------------------------------------------------------------------
-# Domains created under live-production (for the PoC)
+# Business domains (long-lived application groupings).
 # ---------------------------------------------------------------------------
-DOMAINS = {
-    "live-production": ["domain-a", "domain-b"],
-    "live-cloud-landing-zone": ["domain-a"],
-    "non-live-enterprise": ["domain-a"],
-}
+# Each domain sits directly under acme-poc. Confidential apps live in a
+# Private `restricted/` subgroup so they don't inherit inner-source
+# visibility from the parent.
+DOMAINS = ["domain-a", "domain-b"]
 
-# Projects per domain (only for the main test domains; extend as needed)
+# Projects per domain. Confidential projects go into the `restricted/`
+# Private subgroup which only specific reader groups can see.
 PROJECTS = {
-    "live-production/domain-a":            ["proj-1", "proj-2", "proj-3"],
-    "live-production/domain-a/restricted": ["restricted-proj-1"],
-    "live-production/domain-b":            ["proj-1", "proj-2", "proj-3"],
-    "platform":                            ["ci-templates"],
+    "domain-a":            ["proj-1", "proj-2", "proj-3"],
+    "domain-a/restricted": ["restricted-proj-1"],
+    "domain-b":            ["proj-1", "proj-2", "proj-3"],
+    "platform":            ["ci-templates"],
 }
 
 # ---------------------------------------------------------------------------
@@ -284,30 +289,30 @@ CUSTOM_ROLES = [
 APPROACH_1_SHARES = [
     # Share SSCAM project-level groups with domain-a/proj-1
     {
-        "target": "live-production/domain-a/proj-1",
+        "target": "domain-a/proj-1",
         "shared_group": "iam-sim/sscam/domain-a-proj-1_w",
         "role": "developer",
     },
     {
-        "target": "live-production/domain-a/proj-1",
+        "target": "domain-a/proj-1",
         "shared_group": "iam-sim/sscam/domain-a-proj-1_r",
         "role": "reporter",
     },
     # Optional product-level share
     {
-        "target": "live-production/domain-a",
+        "target": "domain-a",
         "shared_group": "iam-sim/sailpoint/gl-domain-a-dev",
         "role": "developer",
     },
     # Restricted reader
     {
-        "target": "live-production/domain-a/restricted",
+        "target": "domain-a/restricted",
         "shared_group": "iam-sim/sailpoint/gl-restricted-read",
         "role": "reporter",
     },
     # Maintainer group on domain-a domain
     {
-        "target": "live-production/domain-a",
+        "target": "domain-a",
         "shared_group": "iam-sim/p2p/IAM_DevOps_domain-a_Maintainer",
         "role": "maintainer",
     },
@@ -317,10 +322,10 @@ APPROACH_1_SHARES = [
 # Approach 2 (Target) — sharing plan
 # ---------------------------------------------------------------------------
 APPROACH_2_SHARES = [
-    {"target": "live-production/domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-read",  "role": "reporter"},
-    {"target": "live-production/domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-dev",   "role": "developer"},
-    {"target": "live-production/domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-maint", "role": "maintainer"},
-    {"target": "live-production/domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-owner", "role": "owner"},
+    {"target": "domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-read",  "role": "reporter"},
+    {"target": "domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-dev",   "role": "developer"},
+    {"target": "domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-maint", "role": "maintainer"},
+    {"target": "domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-owner", "role": "owner"},
 ]
 
 # ---------------------------------------------------------------------------
@@ -329,14 +334,14 @@ APPROACH_2_SHARES = [
 PROTECTION_PLAN = {
     "protected_branches": [
         {
-            "project": "live-production/domain-a/proj-1",
+            "project": "domain-a/proj-1",
             "name": "main",
             "push_access_level": 0,           # No one
             "merge_access_level": 40,         # Maintainer
             "code_owner_approval_required": True,
         },
         {
-            "project": "live-production/domain-b/proj-1",
+            "project": "domain-b/proj-1",
             "name": "main",
             "push_access_level": 0,
             "merge_access_level": 40,
@@ -344,19 +349,21 @@ PROTECTION_PLAN = {
         },
     ],
     "protected_tags": [
-        {"project": "live-production/domain-a/proj-1", "name": "v*", "create_access_level": 40},
-        {"project": "live-production/domain-b/proj-1", "name": "v*", "create_access_level": 40},
+        {"project": "domain-a/proj-1", "name": "v*", "create_access_level": 40},
+        {"project": "domain-b/proj-1", "name": "v*", "create_access_level": 40},
     ],
     # Protected environments require the env to exist first — the script handles that.
+    # Environment NAMES carry the deployment-zone semantics (staging vs prod);
+    # group nesting does not.
     "protected_environments": [
         {
-            "project": "live-production/domain-a/proj-1",
+            "project": "domain-a/proj-1",
             "name": "staging",
             "deploy_access_levels": [{"access_level": 30}],   # Developer+
             "approval_rules": [],
         },
         {
-            "project": "live-production/domain-a/proj-1",
+            "project": "domain-a/proj-1",
             "name": "prod",
             # Deploy restricted to Carol only (user-specific); will be set by username lookup
             "deploy_access_users": [_U["carol"]],
@@ -426,13 +433,18 @@ SAMPLE_CODEOWNERS = f"""\
 """
 
 # ---------------------------------------------------------------------------
-# Zone-level variables (Phase 11)
+# Domain-level CI variables with environment scope (Phase 11).
 # ---------------------------------------------------------------------------
+# In the flat hierarchy there are no deployment-zone groups; "live-prod"
+# isolation is expressed by the environment_scope on the variable + by
+# the protected `prod` environment in the protection plan above. A job
+# only sees PROD_DEPLOY_TOKEN when (a) it's running on a protected ref AND
+# (b) it declares `environment: prod`.
 ZONE_VARIABLES = [
     {
-        "group": "live-production",
+        "group": "domain-a",
         "key": "PROD_DEPLOY_TOKEN",
-        "value": "zone-secret-value-live-prod",
+        "value": "domain-a-prod-secret",
         "protected": True,
         "masked": True,
         "environment_scope": "prod",

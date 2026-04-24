@@ -130,7 +130,7 @@
   <rect x="580" y="40" width="340" height="350" rx="8" fill="#f5fff9" stroke="#00875a" stroke-width="1"/>
 
   <rect x="600" y="60" width="300" height="36" rx="5" class="gl"/>
-  <text x="750" y="82" class="lbl">acme/live-production/domain-a/</text>
+  <text x="750" y="82" class="lbl">acme/domain-a/</text>
 
   <rect x="620" y="110" width="260" height="30" rx="4" class="gl"/>
   <text x="750" y="130" class="lbl-small">api (project)</text>
@@ -309,7 +309,7 @@
 <pre><code># Per-repo migration script (sketch)
 git clone --mirror https://bitbucket.example.com/scm/PAY/domain-a-api.git
 cd domain-a-api.git
-git remote set-url --push origin https://gitlab.example.com/acme/live-production/domain-a/proj-1.git
+git remote set-url --push origin https://gitlab.example.com/acme/domain-a/proj-1.git
 git push --mirror
 # Then verify: branch + tag counts, LFS object counts, sample-clone checks
 </code></pre>
@@ -703,7 +703,7 @@ git push --mirror
 </div>
 
 <div class="callout-info">
-<strong>Why zone-ordered, not team-ordered:</strong> the deployment-zone hierarchy is the design's primary axis. Migrating zone-by-zone means the policy templates and protected-environment rules for that zone can be refined and applied wholesale. It also means the highest-risk zone (live-production) goes last, with the most learning accumulated.
+<strong>Why deployment-zone-ordered, not team-ordered:</strong> the deployment model is the design's primary criterion for grouping decisions, even though it is <em>not</em> expressed as group nesting in the GitLab tree. Migrating zone-by-zone means the policy templates, protected-environment rules, and runner registrations for that zone can be refined and applied wholesale. It also means the highest-risk zone (live-production deployments) goes last, with the most learning accumulated. The zone is captured by the environment names, scoped variables, and runner tags — not by the path in the group tree.
 </div>
 
 <hr>
@@ -715,7 +715,7 @@ git push --mirror
 <ul>
   <li><strong>Approach 1 (Hybrid Transition)</strong> is the onboarding model for every application during Phase 2.</li>
   <li><strong>Approach 2 (Domain / Product-Line Group-Centric)</strong> is the target state and the entry criterion of Phase 3 per domain.</li>
-  <li><strong>Deployment-model grouping</strong> (live-production, live-cloud-landing-zone, etc.) drives wave sequencing and runner topology.</li>
+  <li><strong>Deployment-model criterion</strong> (live-production, non-live, etc.) drives wave sequencing, environment names, scoped CI variables, and runner topology — but is <em>not</em> expressed via deployment-zone subgroups in the tree (those would force per-zone duplication of every multi-environment app).</li>
   <li><strong>Inner sourcing by default</strong> is enabled from the first cutover, via Internal visibility on non-restricted projects.</li>
   <li><strong>Confidential projects</strong> are placed into <code>restricted/</code> subgroups before any push.</li>
   <li>The <strong>custom roles</strong> (Promoter, Operator, Security Manager) are provisioned once in Phase 0 and bound per domain during Phase 3.</li>

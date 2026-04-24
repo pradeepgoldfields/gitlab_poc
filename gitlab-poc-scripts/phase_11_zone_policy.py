@@ -6,10 +6,10 @@ Sets up zone-level CI/CD variables. (Group-level runner registration must be
 done on a host machine; this script prints the command to run.)
 
 Validates:
-  - PROD_DEPLOY_TOKEN is set at live-production level with environment scope prod
-  - A project in live-production can see the variable when its job declares
+  - PROD_DEPLOY_TOKEN is set at the domain-a group with environment_scope prod
+  - A project under domain-a can see the variable when its job declares
     environment: prod
-  - A project in non-live-enterprise cannot see it (sibling zone)
+  - A project under domain-b (sibling domain) cannot see it
 
 Usage: python3 phase_11_zone_policy.py
 """
@@ -44,10 +44,10 @@ def main():
     # Print runner registration command
     step("Group-level runner registration must be done on a host machine.")
     print("""
-    To register a zone-scoped runner for live-production:
+    To register a domain-scoped runner for domain-a:
 
       1. In the GitLab UI, navigate to:
-         acme-poc/live-production → Build → Runners → New group runner
+         acme-poc/domain-a → Build → Runners → New group runner
 
       2. Set:
          - Tags: live-prod-runner

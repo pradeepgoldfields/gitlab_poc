@@ -44,7 +44,7 @@ def main():
     alice = client_for_env("POC_ALICE_TOKEN")
     bob = client_for_env("POC_BOB_TOKEN")
 
-    api = f"{config.TOP_GROUP}/live-production/domain-a/proj-1"
+    api = f"{config.TOP_GROUP}/domain-a/proj-1"
 
     # --------------------------------------------------------
     # Scenario A.1 — Feature branch pipeline does not expose PROD_DEPLOY_TOKEN
@@ -114,8 +114,8 @@ def main():
 
     Scenario E — Runner scoping
       • Requires a registered group runner (see Phase 11 output).
-      • Tag a job with live-prod-runner; verify it runs for live-production
-        projects but pends for non-live projects.
+      • Tag a job with prod-runner; verify it runs on the prod environment
+        but pends on staging/feature branches without the matching runner tag.
 
     Scenario F — Developer cannot edit CI settings (already covered by Phase 8 T2, T3).
 
@@ -126,7 +126,7 @@ def main():
       • Transfer schedule ownership to another Maintainer to restore.
 
     Scenario H — Group/project variable inheritance
-      • Set a variable at live-production/domain-a; verify inherited by all child projects.
+      • Set a variable at domain-a; verify inherited by all child projects.
       • Override at domain-a/proj-1 with a different value; verify override.
 
     Scenario I — Environment-scoped same-key variables

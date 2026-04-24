@@ -219,7 +219,11 @@ Click <strong>Create custom role</strong>.
 
 <h2>3. Phase 2 — Hierarchy Skeleton</h2>
 
-<p>Build the deployment-zone hierarchy. You will not add projects or members yet — only the empty structure.</p>
+<p>Build the flat business-domain hierarchy. You will not add projects or members yet — only the empty structure.</p>
+
+<div class="callout-info">
+<strong>Why no deployment-zone subgroups?</strong> The reference design groups applications by deployment model (live-production, non-live, cloud landing zone, etc.) but uses that criterion to <em>decide which group an app lives in</em>, not to make deployment zones the top-level shape. The "How It Looks in GitLab" examples in the analysis show domains directly under the top group. We follow that shape here. Deployment-model isolation is enforced through environment-scoped CI variables, protected-environment names, and group-level runner tags (Phase 11) — not group nesting. Each application appears in exactly one place in the tree regardless of how many environments it deploys to.
+</div>
 
 <h3>Step 2.1 — Create the top-level group</h3>
 
@@ -237,50 +241,35 @@ Click <strong>Create group</strong>.
 <strong>Why Internal at top:</strong> The design requires inner sourcing by default. Internal at the top enables any authenticated user to discover non-restricted projects. Sensitive subgroups will be switched to Private explicitly.
 </div>
 
-<h3>Step 2.2 — Create deployment-zone subgroups</h3>
+<h3>Step 2.2 — Create the four peer subgroups</h3>
 
 <div class="step">
-Inside <code>acme-poc</code>, create the following subgroups. For each: click <strong>New subgroup</strong>, set visibility to <strong>Internal</strong>.
+Inside <code>acme-poc</code>, create the following subgroups directly under the top group (no deployment-zone wrapper). For each: click <strong>New subgroup</strong>.
 
 <ul>
-  <li><code>live-production</code></li>
-  <li><code>live-cloud-landing-zone</code></li>
-  <li><code>non-live-enterprise</code></li>
-  <li><code>iam-sim</code> — this will hold the simulated IAM groups. Set visibility to <strong>Private</strong>.</li>
-  <li><code>platform</code> — for shared CI templates. Internal.</li>
+  <li><code>domain-a</code> — first business domain. Visibility: <strong>Internal</strong>.</li>
+  <li><code>domain-b</code> — second (sibling) business domain. Visibility: <strong>Internal</strong>.</li>
+  <li><code>iam-sim</code> — simulated IAM groups (LDAP/SailPoint/SSCAM). Visibility: <strong>Private</strong>.</li>
+  <li><code>platform</code> — shared CI templates and platform tooling. Visibility: <strong>Internal</strong>.</li>
 </ul>
+</div>
+
+<h3>Step 2.3 — Create restricted subgroups</h3>
+
+<div class="step">
+Inside <code>domain-a/</code>, create subgroup <code>restricted</code>. Set visibility to <strong>Private</strong>.
+
+<br><br>(Optional) repeat for <code>domain-b/restricted</code> if domain-b will hold confidential projects.
 </div>
 
 <div class="callout-info">
-<strong>Scope note:</strong> The design lists eight deployment zones. The PoC covers three of them (one live-production, one live-cloud, one non-live) to validate the pattern. Adding more zones later is a repeat of the same steps.
-</div>
-
-<h3>Step 2.3 — Create domain subgroups</h3>
-
-<div class="step">
-Under <code>live-production</code>, create:
-<ul>
-  <li><code>domain-a</code> (Internal)</li>
-  <li><code>domain-b</code> (Internal)</li>
+<strong>How is this still "grouping by deployment model"?</strong> The deployment criterion governs <em>which environment(s) a project is deployed to</em> and is captured by:
+<ul style="margin-bottom:0;">
+  <li>The <code>environment:</code> declaration in <code>.gitlab-ci.yml</code> (e.g. <code>environment: prod</code>);</li>
+  <li>The <strong>environment scope</strong> on protected CI variables (<code>environment_scope=prod</code>);</li>
+  <li>The <strong>Protected flag</strong> on group-level runners — only picks up jobs from protected refs (<code>main</code>, tags) so feature-branch pipelines never use the prod runner.</li>
 </ul>
-
-Under <code>live-cloud-landing-zone</code>, create:
-<ul>
-  <li><code>domain-a</code> (Internal) — same domain name, different zone; this is intentional and tests zone isolation</li>
-</ul>
-
-Under <code>non-live-enterprise</code>, create:
-<ul>
-  <li><code>domain-a</code> (Internal)</li>
-</ul>
-</div>
-
-<h3>Step 2.4 — Create restricted subgroups</h3>
-
-<div class="step">
-Inside <code>live-production/domain-a/</code>, create subgroup <code>restricted</code>. Set visibility to <strong>Private</strong>.
-
-<br><br>Repeat for <code>live-production/domain-b/restricted</code>.
+This gives the same isolation the design wants — prod credentials and prod runners are unreachable from non-prod contexts — without the per-zone group duplication that would force triple membership management for the same app.
 </div>
 
 <div class="callout-warn">
@@ -290,19 +279,19 @@ Inside <code>live-production/domain-a/</code>, create subgroup <code>restricted<
 <h3>Step 2.5 — Create projects</h3>
 
 <div class="step">
-Under <code>live-production/domain-a/</code>, create blank projects (each initialised with a README):
+Under <code>domain-a/</code>, create blank projects (each initialised with a README):
 <ul>
   <li><code>api</code></li>
   <li><code>ui</code></li>
   <li><code>batch</code></li>
 </ul>
 
-Under <code>live-production/domain-a/restricted/</code>:
+Under <code>domain-a/restricted/</code>:
 <ul>
   <li><code>restricted-proj-1</code></li>
 </ul>
 
-Under <code>live-production/domain-b/</code>:
+Under <code>domain-b/</code>:
 <ul>
   <li><code>proj-1</code></li>
   <li><code>proj-2</code></li>
@@ -316,7 +305,7 @@ Under <code>platform/</code>:
 </div>
 
 <div class="expected">
-<strong>Check:</strong> Navigate to <code>acme-poc</code>. You should see all zones as immediate subgroups. Drilling into <code>live-production/domain-a</code> should show 3 projects plus a <code>restricted</code> subgroup. Take a screenshot of the group tree.
+<strong>Check:</strong> Navigate to <code>acme-poc</code>. You should see all zones as immediate subgroups. Drilling into <code>domain-a</code> should show 3 projects plus a <code>restricted</code> subgroup. Take a screenshot of the group tree.
 </div>
 
 <hr>
@@ -445,7 +434,7 @@ Navigate to <code>acme-poc</code> (top-level). Invite <code>poc-dan</code> as <s
 </div>
 
 <div class="expected">
-<strong>Check:</strong> Log in as <code>poc-alice</code> in a separate browser profile. Navigate to <code>acme-poc</code>. Alice should see the Internal subgroups (live-production, live-cloud, etc.) but no projects inherited yet, because nothing has been shared with real projects yet. She should also see the IAM-sim groups she is a member of.
+<strong>Check:</strong> Log in as <code>poc-alice</code> in a separate browser profile. Navigate to <code>acme-poc</code>. Alice should see the Internal subgroups (<code>domain-a</code>, <code>domain-b</code>, <code>platform</code>) but no projects inherited yet, because nothing has been shared with real projects yet. She should also see the IAM-sim groups she is a member of.
 </div>
 
 <hr>
@@ -454,12 +443,12 @@ Navigate to <code>acme-poc</code> (top-level). Invite <code>poc-dan</code> as <s
 
 <h2>6. Phase 5 — Approach 1 Configuration</h2>
 
-<p>Wire up the hybrid pattern on <code>domain-a/proj-1</code>. This mirrors Bitbucket-style per-project access with a minimal deployment-zone grouping.</p>
+<p>Wire up the hybrid pattern on <code>domain-a/proj-1</code>. This mirrors Bitbucket-style per-project access within the flat domain hierarchy.</p>
 
 <h3>Step 5.1 — Share SSCAM groups with domain-a/proj-1</h3>
 
 <div class="step">
-Navigate to <code>acme-poc/live-production/domain-a/proj-1 → Manage → Members</code>. Click <strong>Invite a group</strong>.
+Navigate to <code>acme-poc/domain-a/proj-1 → Manage → Members</code>. Click <strong>Invite a group</strong>.
 <ul>
   <li>Group to invite: <code>acme-poc/iam-sim/sscam/domain-a-proj-1_w</code></li>
   <li>Max role: <strong>Developer</strong></li>
@@ -476,7 +465,7 @@ Click <strong>Invite</strong>.
 <h3>Step 5.2 — Share optional SailPoint group at domain level</h3>
 
 <div class="step">
-Navigate to <code>live-production/domain-a → Manage → Members → Invite a group</code>.
+Navigate to <code>domain-a → Manage → Members → Invite a group</code>.
 <ul>
   <li>Invite group: <code>acme-poc/iam-sim/sailpoint/gl-domain-a-dev</code></li>
   <li>Max role: <strong>Developer</strong></li>
@@ -488,7 +477,7 @@ This represents the "optional product-level group" in Approach 1.
 <h3>Step 5.3 — Share restricted-read with the restricted subgroup</h3>
 
 <div class="step">
-Navigate to <code>live-production/domain-a/restricted → Manage → Members → Invite a group</code>.
+Navigate to <code>domain-a/restricted → Manage → Members → Invite a group</code>.
 <ul>
   <li>Invite group: <code>acme-poc/iam-sim/sailpoint/gl-restricted-read</code></li>
   <li>Max role: <strong>Reporter</strong></li>
@@ -498,7 +487,7 @@ Navigate to <code>live-production/domain-a/restricted → Manage → Members →
 <h3>Step 5.4 — Share Maintainer group at domain level</h3>
 
 <div class="step">
-Navigate to <code>live-production/domain-a → Manage → Members → Invite a group</code>.
+Navigate to <code>domain-a → Manage → Members → Invite a group</code>.
 <ul>
   <li>Invite group: <code>acme-poc/iam-sim/p2p/IAM_DevOps_domain-a_Maintainer</code></li>
   <li>Max role: <strong>Maintainer</strong></li>
@@ -520,7 +509,7 @@ Navigate to <code>live-production/domain-a → Manage → Members → Invite a g
 <h3>Step 6.1 — Share SailPoint groups with domain-b</h3>
 
 <div class="step">
-Navigate to <code>acme-poc/live-production/domain-b → Manage → Members → Invite a group</code>. Add:
+Navigate to <code>acme-poc/domain-b → Manage → Members → Invite a group</code>. Add:
 <ul>
   <li><code>gl-domain-b-read</code> as <strong>Reporter</strong></li>
   <li><code>gl-domain-b-dev</code> as <strong>Developer</strong></li>
@@ -686,7 +675,7 @@ Repeat steps 7.1–7.6 on <code>domain-b/proj-1</code>, substituting the domain-
 
 <div class="step">
 In Alice's browser profile:
-<pre><code>git clone git@&lt;gitlab-host&gt;:acme-poc/live-production/domain-a/proj-1.git
+<pre><code>git clone git@&lt;gitlab-host&gt;:acme-poc/domain-a/proj-1.git
 cd api
 git checkout -b alice-feature-1
 echo "change" &gt;&gt; test.txt
@@ -901,14 +890,14 @@ git add CONTRIBUTORS.md
 git commit -m "Add contributor"
 git push origin dan-contribution</code></pre>
 
-Then on the fork project page, open a merge request targeting the upstream <code>acme-poc/live-production/domain-a/proj-1:main</code>.
+Then on the fork project page, open a merge request targeting the upstream <code>acme-poc/domain-a/proj-1:main</code>.
 </div>
 
 <h3>Step 10.3 — Dan cannot push to upstream</h3>
 
 <div class="step">
 As Dan:
-<pre><code>git remote add upstream git@&lt;gitlab-host&gt;:acme-poc/live-production/domain-a/proj-1.git
+<pre><code>git remote add upstream git@&lt;gitlab-host&gt;:acme-poc/domain-a/proj-1.git
 git push upstream dan-contribution</code></pre>
 </div>
 
@@ -939,7 +928,7 @@ As Dan, search for "restricted-proj-1". As Alice (Developer on domain-a), search
 <h3>Step 10.6 — Con sees only restricted</h3>
 
 <div class="step">
-As Con, navigate to <code>live-production/domain-a</code>.
+As Con, navigate to <code>domain-a</code>.
 </div>
 
 <div class="expected">
@@ -957,7 +946,7 @@ As Con, navigate to <code>live-production/domain-a</code>.
 <h3>Step 11.1 — Set a zone-level CI/CD variable</h3>
 
 <div class="step">
-Navigate to <code>acme-poc/live-production → Settings → CI/CD → Variables → Add variable</code>.
+Navigate to <code>acme-poc → Settings → CI/CD → Variables → Add variable</code>.
 <ul>
   <li>Key: <code>PROD_DEPLOY_TOKEN</code></li>
   <li>Value: <code>zone-secret-value-live-prod</code></li>
@@ -970,7 +959,7 @@ Navigate to <code>acme-poc/live-production → Settings → CI/CD → Variables 
 <h3>Step 11.2 — Register a zone-scoped runner</h3>
 
 <div class="step">
-Navigate to <code>live-production → Build → Runners → New group runner</code>.
+Navigate to <code>acme-poc/domain-a → Build → Runners → New group runner</code>.
 <ul>
   <li>Tag: <code>live-prod-runner</code></li>
   <li>Run untagged jobs: <strong>Off</strong></li>
@@ -1005,17 +994,17 @@ Push a v* tag.
 <h3>Step 11.4 — Verify non-live does NOT inherit</h3>
 
 <div class="step">
-Create a project <code>non-live-enterprise/domain-a/test-service</code>. Add the same debug job.
+Create a project <code>domain-b/test-service</code> (sibling domain — different scope than the runner). Add the same debug job.
 </div>
 
 <div class="expected">
-<strong>Expected:</strong> The job does NOT pick up on <code>live-prod-runner</code> (it is group-scoped to live-production and will remain pending). The <code>PROD_DEPLOY_TOKEN</code> is empty in the log. Confirms zone isolation.
+<strong>Expected:</strong> The job does NOT pick up on <code>prod-runner</code> (it is group-scoped to <code>domain-a</code> and will remain pending for <code>domain-b</code> jobs). The <code>PROD_DEPLOY_TOKEN</code> is empty in the log. Confirms domain + environment-scope isolation.
 </div>
 
 <h3>Step 11.5 — Add a new project mid-test</h3>
 
 <div class="step">
-Create <code>live-production/domain-a/reporting</code>. Add the same debug job.
+Create <code>domain-a/reporting</code>. Add the same debug job.
 </div>
 
 <div class="expected">
@@ -1073,7 +1062,7 @@ Dan opens another MR from his fork that includes a debug_prod_token step. Config
 Create a project <code>domain-b/proj-1</code> that attempts to clone <code>domain-a/proj-1</code> using <code>CI_JOB_TOKEN</code>:
 <pre><code>test_token:
   script:
-    - git clone "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/acme-poc/live-production/domain-a/proj-1.git"</code></pre>
+    - git clone "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/acme-poc/domain-a/proj-1.git"</code></pre>
 </div>
 
 <div class="expected">
@@ -1105,7 +1094,7 @@ As Bob, create a schedule on <code>domain-a/proj-1</code> running every hour. La
 <h3>Step 12.8 — Scenario H: Group-level variable inheritance</h3>
 
 <div class="step">
-Add a variable at <code>live-production/domain-a/</code> level. Confirm it is visible in <code>api</code>, <code>ui</code>, and <code>batch</code>. Add a project-level variable with the same key in <code>api</code>. Confirm project value overrides.
+Add a variable at <code>domain-a/</code> level. Confirm it is visible in <code>api</code>, <code>ui</code>, and <code>batch</code>. Add a project-level variable with the same key in <code>api</code>. Confirm project value overrides.
 </div>
 
 <h3>Step 12.9 — Scenario I: Environment-scoped same-key variables</h3>

@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Enterprise GitLab Access Model PoC — Comprehensive Overview</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+         max-width: 1200px; margin: 2em auto; padding: 0 1.5em;
+         color: #000; background: #fff; line-height: 1.6; }
+  h1 { font-size: 2em; border-bottom: 3px solid #0052cc; padding-bottom: 0.3em; color: #172b4d; }
+  h2 { font-size: 1.5em; margin-top: 2.5em; border-bottom: 1px solid #dfe1e6;
+       padding-bottom: 0.2em; color: #172b4d; }
+  h3 { font-size: 1.2em; margin-top: 2em; color: #172b4d; }
+  h4 { font-size: 1.05em; margin-top: 1.5em; color: #42526e; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  th, td { border: 1px solid #dfe1e6; padding: 0.5em 0.75em; text-align: left; vertical-align: top; }
+  th { background: #f4f5f7; font-weight: 600; color: #172b4d; }
+  pre { background: #f4f5f7; border: 1px solid #dfe1e6; border-radius: 3px;
+        padding: 0.75em 1em; overflow-x: auto; font-size: 0.9em; }
+  code { background: #f4f5f7; padding: 0.05em 0.35em; border-radius: 3px; font-size: 0.9em; }
+
+  .callout-info    { border-left: 4px solid #0052cc; background: #deebff; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-warn    { border-left: 4px solid #ff991f; background: #fffae6; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-success { border-left: 4px solid #00875a; background: #e3fcef; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-danger  { border-left: 4px solid #de350b; background: #ffebe6; padding: 0.75em 1em; margin: 1em 0; }
+
+  .scenario { background: #fafbfc; border: 1px solid #dfe1e6; border-left: 4px solid #0052cc;
+              padding: 1em 1.2em; margin: 1.2em 0; border-radius: 4px; }
+  .scenario h4 { margin-top: 0; color: #172b4d; }
+  .scenario .meta { display: flex; gap: 1.5em; flex-wrap: wrap; font-size: 0.88em;
+                    color: #5e6c84; margin: 0.4em 0 0.8em 0; }
+  .scenario .meta strong { color: #42526e; }
+  .scenario .why { background: #fffae6; border-left: 3px solid #ff991f;
+                   padding: 0.5em 0.9em; margin: 0.8em 0; font-size: 0.95em; }
+  .scenario .what { margin: 0.7em 0; }
+  .scenario .expected { background: #e3fcef; border-left: 3px solid #00875a;
+                        padding: 0.5em 0.9em; margin: 0.6em 0; font-size: 0.95em; }
+  .scenario img { max-width: 100%; border: 1px solid #dfe1e6; border-radius: 3px;
+                  margin-top: 0.6em; cursor: zoom-in; display: block; }
+  .scenario img:hover { box-shadow: 0 0 0 2px #0052cc; }
+  .scenario .shot-caption { font-size: 0.83em; color: #5e6c84; margin-top: 0.3em;
+                            font-style: italic; }
+  .persona-tag { display: inline-block; background: #fff; border: 1px solid #dfe1e6;
+                 border-radius: 3px; padding: 0.05em 0.5em; font-family: monospace;
+                 font-size: 0.85em; }
+  .pass { color: #00875a; font-weight: 600; }
+  .fail { color: #de350b; font-weight: 600; }
+
+  .toc { background: #f4f5f7; border: 1px solid #dfe1e6; padding: 0.7em 1.4em;
+         border-radius: 4px; margin: 1.5em 0; }
+  .toc ol { margin: 0.4em 0; padding-left: 1.5em; }
+  .toc li { margin: 0.15em 0; }
+
+  .diagram { margin: 1.5em 0; padding: 1em; background: #fafbfc;
+             border: 1px solid #dfe1e6; border-radius: 4px; }
+  .diagram .caption { text-align: center; font-size: 0.88em; color: #5e6c84;
+                      margin-top: 0.5em; font-style: italic; }
+  .muted { color: #5e6c84; font-size: 0.9em; }
+
+  .claim { background: #f4f5f7; border-left: 4px solid #0052cc; padding: 1em 1.2em;
+           margin: 1.2em 0; border-radius: 4px; }
+  .claim h4 { margin-top: 0; color: #0052cc; }
+</style>
+</head>
+<body>
+
+<h1>Enterprise GitLab Access Model PoC — Comprehensive Overview</h1>
+
+<p class="muted">
+  A single-document briefing covering: <strong>what this PoC proves</strong>,
+  the <strong>21 scenarios</strong> executed against a live GitLab instance,
+  the <strong>importance</strong> of each one, and <strong>screenshot
+  evidence</strong> from the actual run. Generated as part of the migration
+  feasibility study from Bitbucket to GitLab Ultimate.
+</p>
+
+<div class="callout-info">
+  <strong>New to GitLab access?</strong> Skip ahead to <a href="#background">Section 0 — Background</a> for a primer on visibility levels (Public / Internal / Private), the role hierarchy (Guest → Owner), how custom roles layer on top, and how groups + projects + LDAP fit together on a self-managed instance. Everything else in this document assumes those terms.
+</div>
+
+<div class="callout-info">
+  <strong>Companion artifacts in this repo:</strong> the underlying design
+  is in <code>analysis</code>; the executive summary in
+  <code>enterprise-gitlab-poc-report.html</code>; the manual UI walkthrough
+  in <code>enterprise-gitlab-poc-execution-guide.html</code>; the role
+  capability matrix in <code>roles-and-personas.html</code>; the per-API-call
+  trace in <code>gitlab-poc-scripts/poc-final-report.html</code>.
+</div>
+
+
+<!-- =====================================================================
+     0. BACKGROUND — GitLab visibility + access model primer
+     ===================================================================== -->
+<h2 id="background">0. Background — GitLab visibility &amp; access model</h2>
+
+<p>
+  This section is a primer for readers new to GitLab self-managed. It
+  introduces the concepts the rest of this document uses without further
+  definition: the three <strong>visibility levels</strong>, the
+  <strong>group/project hierarchy</strong>, the <strong>built-in role
+  ladder</strong>, <strong>custom roles</strong>, and how
+  <strong>LDAP/SCIM</strong> binds external identity into all of this.
+</p>
+
+<h3>0.1 The three visibility levels (self-managed instance)</h3>
+
+<p>
+  Every GitLab project and group has exactly one of these visibility
+  levels. The level controls who can <em>find and read</em> the resource
+  before any role-based access is considered.
+</p>
+
+<div class="diagram">
+<svg viewBox="0 0 1100 280" xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="GitLab visibility levels diagram">
+  <style>
+    .vis-priv { fill: #ffebe6; stroke: #de350b; stroke-width: 2; }
+    .vis-int  { fill: #fffae6; stroke: #ff991f; stroke-width: 2; }
+    .vis-pub  { fill: #e3fcef; stroke: #00875a; stroke-width: 2; }
+    .ttl   { font-family: -apple-system, Arial, sans-serif; font-size: 14px; font-weight: 600; fill: #172b4d; text-anchor: middle; }
+    .lbl   { font-family: -apple-system, Arial, sans-serif; font-size: 11px; fill: #000; text-anchor: middle; }
+    .small { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #42526e; text-anchor: middle; }
+    .icon  { font-family: -apple-system, Arial, sans-serif; font-size: 20px; text-anchor: middle; }
+  </style>
+
+  <!-- Private -->
+  <rect x="50" y="40" width="320" height="200" rx="6" class="vis-priv"/>
+  <text x="210" y="65" class="ttl">Private</text>
+  <text x="210" y="90" class="lbl">Only explicit project/group members</text>
+  <text x="210" y="105" class="lbl">can find or read it.</text>
+  <text x="210" y="135" class="small">Anonymous: invisible</text>
+  <text x="210" y="152" class="small">Signed-in non-member: 404</text>
+  <text x="210" y="169" class="small">Signed-in member: per role</text>
+  <text x="210" y="200" class="small" style="font-style:italic;">Used here for restricted/ subgroups</text>
+  <text x="210" y="215" class="small" style="font-style:italic;">and the iam-sim/ container.</text>
+
+  <!-- Internal -->
+  <rect x="390" y="40" width="320" height="200" rx="6" class="vis-int"/>
+  <text x="550" y="65" class="ttl">Internal</text>
+  <text x="550" y="90" class="lbl">Any signed-in user on the instance</text>
+  <text x="550" y="105" class="lbl">can find and read it.</text>
+  <text x="550" y="135" class="small">Anonymous: invisible</text>
+  <text x="550" y="152" class="small">Signed-in non-member: read-only</text>
+  <text x="550" y="169" class="small">Signed-in member: per role</text>
+  <text x="550" y="200" class="small" style="font-style:italic;">Used here for the top group, both</text>
+  <text x="550" y="215" class="small" style="font-style:italic;">domains, and most projects.</text>
+
+  <!-- Public -->
+  <rect x="730" y="40" width="320" height="200" rx="6" class="vis-pub"/>
+  <text x="890" y="65" class="ttl">Public</text>
+  <text x="890" y="90" class="lbl">Anyone — including anonymous</text>
+  <text x="890" y="105" class="lbl">visitors — can find and read it.</text>
+  <text x="890" y="135" class="small">Anonymous: read-only</text>
+  <text x="890" y="152" class="small">Signed-in non-member: read-only</text>
+  <text x="890" y="169" class="small">Signed-in member: per role</text>
+  <text x="890" y="200" class="small" style="font-style:italic;">Not used in this PoC. Typical for</text>
+  <text x="890" y="215" class="small" style="font-style:italic;">open-source projects only.</text>
+</svg>
+<div class="caption">Figure 0.1 — The three GitLab visibility levels.
+  "Internal" is the keystone of inner sourcing on a self-managed instance —
+  it lets every authenticated employee discover and read non-confidential
+  code without requiring per-project membership.</div>
+</div>
+
+<p>Three rules tie these together:</p>
+
+<ul>
+  <li><strong>A child cannot be more visible than its parent.</strong> A Public group cannot contain a Private project, but a Public group can contain Internal or Public projects. This is why the PoC's <code>restricted/</code> subgroup is Private — anything beneath inherits the Private floor.</li>
+  <li><strong>Visibility filters the audience; roles filter what each member can do.</strong> A user who can read a project (because it's Internal) still needs an explicit Developer role to push to it.</li>
+  <li><strong>Visibility is set per-resource, not inherited downward by default</strong> — but the rule above means that lowering a parent's visibility cascades a ceiling. (Raising a parent does not raise children.)</li>
+</ul>
+
+<h3>0.2 Groups, projects and the membership model</h3>
+
+<p>
+  GitLab is organized as a tree. The root of an instance is the
+  <strong>top-level group</strong>. Below it can be any number of
+  <strong>subgroups</strong> (which can themselves contain further
+  subgroups), and any group can contain <strong>projects</strong> (the
+  things that actually hold code).
+</p>
+
+<p>
+  A user gets access to a project in two ways:
+</p>
+
+<ol>
+  <li><strong>Direct membership</strong> — added as a member of that exact project, with a specific role (Guest, Reporter, Developer, Maintainer, Owner).</li>
+  <li><strong>Inherited membership</strong> — a member of any group ancestor of the project. The role inherited is the role they hold on the ancestor, and the highest of (direct, inherited) wins.</li>
+</ol>
+
+<p>
+  In the PoC, we use a third pattern that combines both:
+  <strong>group share</strong>. Group A can be "shared with" group B at a
+  given role — every member of A then becomes an inherited member of every
+  project under B at that role. This is how LDAP-managed groups (which
+  live under <code>iam-sim/</code> in the PoC) project access onto the
+  business-domain tree without anyone being a direct project member.
+</p>
+
+<h3>0.3 The built-in role ladder</h3>
+
+<p>
+  GitLab ships with seven default roles, ordered by privilege. Higher
+  roles include everything the lower roles can do.
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width: 16%;">Role</th>
+      <th style="width: 8%;">Numeric</th>
+      <th>What it grants (project / group level)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Minimal Access</strong></td><td>5</td><td>Only meaningful at the top group of a SAML/SCIM-bound instance — the user appears as a member but has no rights to anything inside. Used in the PoC for Dan, who needs to <em>discover</em> Internal projects via Explore but holds no role on them.</td></tr>
+    <tr><td><strong>Guest</strong></td><td>10</td><td>Browse the project (code, issues, MRs, wiki); create issues; comment.</td></tr>
+    <tr><td><strong>Planner</strong></td><td>15</td><td>Guest + manage issues, epics, milestones, iterations.</td></tr>
+    <tr><td><strong>Reporter</strong></td><td>20</td><td>Pull/clone code; read pipeline logs; download artifacts; read non-protected CI variables.</td></tr>
+    <tr><td><strong>Developer</strong></td><td>30</td><td>Push to non-protected branches; open MRs; trigger pipelines on non-protected refs. <em>Cannot</em> push to protected branches, merge to <code>main</code>, edit settings, or read protected variables.</td></tr>
+    <tr><td><strong>Maintainer</strong></td><td>40</td><td>Merge to protected branches; create release tags; edit CI/CD settings; manage protected branches/tags/environments; add members up to Maintainer; register project runners.</td></tr>
+    <tr><td><strong>Owner</strong></td><td>50</td><td>Delete or transfer projects/groups; manage group settings/runners/variables; add Owners; configure SAML/SCIM links.</td></tr>
+  </tbody>
+</table>
+
+<h3>0.4 Custom roles (Ultimate / EE-only)</h3>
+
+<p>
+  The default ladder is coarse — Maintainer is the only role that can edit
+  CI/CD variables, but you may want a release manager to manage variables
+  <em>without</em> giving them write access to source code. <strong>Custom
+  roles</strong> solve this: you pick a base role and toggle on additional
+  fine-grained <em>abilities</em>.
+</p>
+
+<p>
+  The PoC defines three custom roles, all on a Reporter base:
+</p>
+
+<ul>
+  <li><strong>Promoter</strong> — Reporter + <code>admin_cicd_variables</code>. Can manage release-time CI variables without ever pushing code.</li>
+  <li><strong>Operator</strong> — Reporter + <code>admin_protected_environments</code> + <code>admin_cicd_variables</code> + <code>read_runners</code> + <code>admin_runners</code>. SRE who manages prod environments + runners without holding write access to code.</li>
+  <li><strong>Security Manager</strong> — Reporter + <code>read_vulnerability</code> + <code>admin_vulnerability</code> + <code>admin_merge_request</code>. Vulnerability waiver + approver of security-sensitive MRs.</li>
+</ul>
+
+<p>
+  Custom roles are defined once at the instance level (admin operation),
+  then attached to a group share via <code>member_role_id</code> — that's
+  how a single LDAP group like <code>IAM_DevOps_domain-a_Promoter</code>
+  becomes a Promoter on a specific project.
+</p>
+
+<h3>0.5 Protections that layer on top of roles</h3>
+
+<p>
+  Roles set the floor; <strong>protection rules</strong> set the ceiling
+  on specific actions. The PoC validates four:
+</p>
+
+<ul>
+  <li><strong>Protected branches</strong> — restrict push and merge to specific roles or users on a per-branch-pattern basis. PoC config: <code>main</code> = "no-one can push, Maintainer can merge, code-owner approval required".</li>
+  <li><strong>Protected tags</strong> — restrict tag creation by pattern. PoC config: <code>v*</code> = "Maintainer only".</li>
+  <li><strong>Protected environments</strong> — restrict who can deploy to a named environment, and optionally require an approver. PoC config: <code>prod</code> = "Maintainer-floor allowed deployers + 1 approval required from Bob" (the two-person rule).</li>
+  <li><strong>CODEOWNERS</strong> — file in the repo that maps path patterns to required reviewer groups. PoC config: <code>/infra/</code> requires Security Manager group review.</li>
+</ul>
+
+<h3>0.6 LDAP / IAM binding (simulated in this PoC)</h3>
+
+<p>
+  On a real self-managed instance, identity and group membership come from
+  LDAP/SAML/SCIM, not from GitLab itself. GitLab's job is to enforce
+  access; the lifecycle (joiner / mover / leaver) is owned externally.
+  The real enterprise uses three external identity systems —
+  <strong>SSCAM</strong>, <strong>SailPoint</strong>, and <strong>P2P</strong>
+  — each issuing LDAP groups under different naming conventions.
+</p>
+
+<p>
+  Wiring a live LDAP/SSO bind into a PoC is out of scope. So the PoC
+  simulates each IAM system as a GitLab group, and each LDAP group as a
+  GitLab subgroup underneath it. Users become members of the subgroup; the
+  subgroup is then shared with the target group/project — which is exactly
+  what a real LDAP-backed GitLab does internally.
+</p>
+
+<h4>The container hierarchy</h4>
+
+<p>
+  Under the top-level <code>acme-poc</code> group there is a real side
+  (the business-domain tree) and a simulation side (the
+  <code>iam-sim/</code> Private subgroup):
+</p>
+
+<pre><code>acme-poc/                              ← top-level group (Internal)
+├── domain-a/                          ← REAL side — business domain
+│   ├── proj-1, proj-2, proj-3
+│   └── restricted/restricted-proj-1   ← Private subgroup
+├── domain-b/                          ← REAL side — sibling domain
+│   └── proj-1, proj-2, proj-3
+├── platform/ci-templates              ← REAL side — shared CI
+│
+└── iam-sim/                           ← SIMULATED IAM side (Private)
+    ├── sscam/                         ← simulates SSCAM (project-level LDAP)
+    │   ├── domain-a-proj-1_w / _r
+    │   └── domain-a-proj-2_w / _r
+    ├── sailpoint/                     ← simulates SailPoint (group-level LDAP)
+    │   ├── gl-domain-a-{read,dev,maint,owner}
+    │   ├── gl-domain-b-{read,dev,maint,owner}
+    │   └── gl-restricted-read
+    └── p2p/                           ← simulates P2P DevOps roster
+        ├── IAM_DevOps_domain-a_Promoter
+        ├── IAM_DevOps_domain-a_Operator
+        ├── IAM_DevOps_domain-a_SecurityManager
+        ├── IAM_DevOps_domain-a_Maintainer
+        ├── IAM_DevOps_domain-a_Developer
+        ├── IAM_DevOps_domain-a_Reporter
+        └── IAM_DevOps_Owner</code></pre>
+
+<p>
+  The three sub-containers (<code>sscam</code>, <code>sailpoint</code>,
+  <code>p2p</code>) exist only to group the simulated LDAP groups the same
+  way the real systems do — they carry no access of their own. They are
+  defined in <code>config.py</code> and created by
+  <code>phase_03_iam_groups.py</code>. Naming mirrors the real LDAP groups
+  one-for-one:
+</p>
+
+<ul>
+  <li><code>&lt;app&gt;_w</code> / <code>&lt;app&gt;_r</code> → SSCAM (Bitbucket-era, project-level — Approach 1)</li>
+  <li><code>gl-&lt;domain&gt;-{read,dev,maint,owner}</code> → SailPoint (GitLab-native, group-level — Approach 2)</li>
+  <li><code>IAM_DevOps_&lt;group&gt;_&lt;Role&gt;</code> → P2P DevOps (custom roles — Promoter, Operator, Security Manager)</li>
+</ul>
+
+<h4>The two-hop assignment model</h4>
+
+<p>
+  Assigning a user to a project is deliberately never direct. It's always
+  two hops:
+</p>
+
+<p>
+  <strong>Hop 1 — put the user in an IAM-sim subgroup (simulates LDAP
+  membership).</strong> Phase 4 walks the
+  <code>IAM_MEMBERSHIPS</code> map in <code>config.py</code> and adds each
+  user to one or more IAM-sim subgroups via
+  <code>POST /groups/:id/members</code>. Example:
+</p>
+
+<pre><code>IAM_MEMBERSHIPS = {
+    "iam-sim/sscam/domain-a-proj-1_w":            [alice],   # Approach 1
+    "iam-sim/sailpoint/gl-domain-a-dev":          [alice],   # Approach 2
+    "iam-sim/p2p/IAM_DevOps_domain-a_Maintainer": [bob],     # Custom-role roster
+    ...
+}</code></pre>
+
+<p>
+  At this point Alice has <em>no access</em> to any project yet — she's
+  just listed inside the simulated LDAP group. This matches real life:
+  being in an LDAP group alone does nothing until something binds that
+  group to a resource.
+</p>
+
+<p>
+  <strong>Hop 2 — share the IAM-sim subgroup with a target group/project
+  (the bind).</strong> Phase 5 (Approach 1) and Phase 6 (Approach 2)
+  invoke GitLab's "share group with group/project" API:
+</p>
+
+<ul>
+  <li><strong>Project share:</strong> <code>POST /projects/:id/share</code> with <code>group_id</code> and <code>group_access</code></li>
+  <li><strong>Group share:</strong> <code>POST /groups/:id/share</code> with <code>group_id</code> and <code>group_access</code></li>
+</ul>
+
+<p>Approach 1 (Hybrid) shares for the PoC:</p>
+
+<pre><code>domain-a-proj-1_w   --share as Developer  --&gt;  domain-a/proj-1
+gl-domain-a-dev     --share as Developer  --&gt;  domain-a (inherited to all children)
+gl-restricted-read  --share as Reporter   --&gt;  domain-a/restricted</code></pre>
+
+<p>Approach 2 (Target — pure group-level) shares:</p>
+
+<pre><code>gl-domain-b-read    --share as Reporter   --&gt;  domain-b
+gl-domain-b-dev     --share as Developer  --&gt;  domain-b
+gl-domain-b-maint   --share as Maintainer --&gt;  domain-b
+gl-domain-b-owner   --share as Owner      --&gt;  domain-b</code></pre>
+
+<p>
+  Now Alice resolves as: "member of <code>gl-domain-a-dev</code> → that
+  group is shared with <code>domain-a</code> as Developer → therefore Alice
+  is Developer on every project under <code>domain-a</code>, by
+  inheritance." Exactly the behavior a real LDAP-backed GitLab would
+  produce when SailPoint provisions her into <code>gl-domain-a-dev</code>.
+</p>
+
+<h4>Custom roles — the third binding</h4>
+
+<p>
+  Phase 1 creates the three custom roles at the instance level. Phase 9
+  then shares the <code>iam-sim/p2p/IAM_DevOps_domain-a_&lt;Role&gt;</code>
+  subgroups with <code>domain-a/proj-1</code>, passing the
+  <code>member_role_id</code> parameter on the share call. That single
+  call binds the IAM-sim roster to a project and stamps everyone in it
+  with the custom role.
+</p>
+
+<h4>The two deliberate exceptions</h4>
+
+<p>Two grants do <em>not</em> route through the IAM-sim tree, on purpose:</p>
+
+<ul>
+  <li><strong>Dan</strong> — added directly to <code>acme-poc</code> top group as Minimal Access (level 5). No IAM-sim membership anywhere. This is how the PoC proves inner-source discovery: any authenticated user can discover Internal projects without being in any LDAP group.</li>
+  <li><strong>Carol on prod</strong> — listed by username directly on the <code>prod</code> protected environment's deploy allow-list. Demonstrates user-level exception on top of group-level access, which is sometimes unavoidable for deployment gating.</li>
+</ul>
+
+<p>Every other grant goes through an IAM-sim subgroup — no direct user-to-project assignments.</p>
+
+<h4>Why this simulation is faithful</h4>
+
+<p>
+  The effective access is identical to a real LDAP bind because in both
+  cases GitLab sees:
+</p>
+
+<blockquote style="border-left: 3px solid #0052cc; padding-left: 1em; color: #42526e; margin: 0.8em 0;">
+  "this user is a member of group X, and group X is shared with
+  project/group Y at role Z."
+</blockquote>
+
+<p>
+  The only difference is <em>how</em> the user lands in group X — manually
+  via the API in the PoC, or via LDAP sync / SCIM / SailPoint provisioning
+  in production. Everything downstream (inheritance, branch protection,
+  CODEOWNERS, audit events, MR approvals) behaves the same way, which is
+  why the PoC validates the design without a live directory.
+</p>
+
+<div class="callout-info">
+  <strong>How to do the share-a-group-with-a-group hop in the GitLab UI</strong>
+  <ol style="margin-bottom: 0;">
+    <li>Navigate to the <strong>target</strong> group (the one that will receive access). Example: <code>acme-poc/domain-b</code></li>
+    <li>Left sidebar: <strong>Manage → Members</strong>.</li>
+    <li>Click the <strong>Invite a group</strong> tab (next to Invite members).</li>
+    <li>In the <strong>Select a group to invite</strong> dropdown, pick the source IAM-sim group. Example: <code>acme-poc/iam-sim/sailpoint/gl-domain-b-dev</code></li>
+    <li>In <strong>Select max role</strong>, pick the ceiling role (Guest / Reporter / Developer / Maintainer / Owner — or a custom role if one is enabled). This caps access: a user who is Owner in the source group becomes only Developer on the target if "Developer" is selected.</li>
+    <li>Optional: set an <strong>Access expiration date</strong>.</li>
+    <li>Click <strong>Invite</strong>.</li>
+  </ol>
+  Same flow on a project: <em>Project → Manage → Members → Invite a group</em>. This is the UI equivalent of the <code>POST /groups/:id/share</code> and <code>POST /projects/:id/share</code> calls Phase 5 and Phase 6 make programmatically.
+</div>
+
+<p>
+  After the invite, the target group's <em>Members → Groups</em> sub-tab
+  shows the share. Individual members of the source group then appear on
+  the target's <em>Members</em> tab labelled <em>"via shared group"</em> —
+  exactly the same label GitLab uses in a production LDAP-backed
+  deployment.
+</p>
+
+<h3>0.7 Putting it together — the access path</h3>
+
+<p>
+  When a user attempts an action on a project, GitLab checks:
+</p>
+
+<ol>
+  <li><strong>Visibility</strong> — can this user even <em>see</em> this resource? If Private and the user is not a member (direct or inherited): 404.</li>
+  <li><strong>Effective role</strong> — what is the highest role this user holds on this project, considering direct membership, group inheritance, and group shares?</li>
+  <li><strong>Role-level permission</strong> — does that role allow the action? (E.g. push to a non-protected branch needs Developer+.)</li>
+  <li><strong>Custom-role abilities</strong> — if a custom role is in play, does the ability set permit it?</li>
+  <li><strong>Protection rule</strong> — if the action is on a protected branch / tag / environment, does the protection rule allow this user (or their role)?</li>
+  <li><strong>Two-person rule (if applicable)</strong> — for environments with required approvals, is the action approved by a different user?</li>
+</ol>
+
+<p>
+  Every PoC scenario walks one of these rules to its negative or positive
+  outcome. With this background in place, the rest of this document is
+  about <em>which rule</em> each scenario validates and the screenshot proof.
+</p>
+
+<hr>
+
+
+<!-- =====================================================================
+     1. EXECUTIVE SUMMARY
+     ===================================================================== -->
+<h2>1. Executive summary</h2>
+
+<p>
+  Migrating from Bitbucket to GitLab introduces a more powerful but
+  fundamentally different access model. The PoC validates that
+  GitLab's group-centric authorization, custom roles, branch/tag/environment
+  protection, and inner sourcing model can replace the existing
+  Bitbucket-style <code>_w</code>/<code>_r</code> repository-level group
+  pattern <strong>without losing the protections we have today and while
+  unlocking patterns that are awkward or impossible in Bitbucket</strong>.
+</p>
+
+<p>
+  The PoC is scaffolded around two parallel authorization approaches:
+</p>
+
+<div class="diagram">
+<svg viewBox="0 0 1100 380" xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="Approach 1 vs Approach 2 sharing patterns">
+  <style>
+    .ttl   { font-family: -apple-system, Arial, sans-serif; font-size: 14px; font-weight: 600; fill: #172b4d; text-anchor: middle; }
+    .lbl   { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #000; text-anchor: middle; }
+    .small { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #42526e; text-anchor: middle; }
+    .box-grp  { fill: #deebff; stroke: #0052cc; stroke-width: 1.5; }
+    .box-prj  { fill: #fffae6; stroke: #ff991f; stroke-width: 1.5; }
+    .box-iam  { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .arrow    { stroke: #6b778c; stroke-width: 1.5; fill: none; marker-end: url(#ah); }
+    .arrow-share { stroke: #00875a; stroke-width: 2; fill: none; marker-end: url(#ahg); stroke-dasharray: 4 3; }
+    .divider  { stroke: #dfe1e6; stroke-width: 1; stroke-dasharray: 5 5; }
+  </style>
+  <defs>
+    <marker id="ah"  markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#6b778c"/>
+    </marker>
+    <marker id="ahg" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#00875a"/>
+    </marker>
+  </defs>
+
+  <!-- Approach 1 -->
+  <text x="275" y="25" class="ttl">Approach 1 — Hybrid (transition)</text>
+
+  <rect x="100" y="50" width="180" height="38" rx="4" class="box-iam"/>
+  <text x="190" y="70" class="lbl">domain-a-proj-1_w</text>
+  <text x="190" y="84" class="small">SSCAM project-level group</text>
+
+  <rect x="290" y="50" width="180" height="38" rx="4" class="box-iam"/>
+  <text x="380" y="70" class="lbl">gl-domain-a-dev</text>
+  <text x="380" y="84" class="small">SailPoint domain group</text>
+
+  <rect x="100" y="160" width="180" height="38" rx="4" class="box-prj"/>
+  <text x="190" y="180" class="lbl">proj-1</text>
+
+  <rect x="290" y="160" width="180" height="38" rx="4" class="box-grp"/>
+  <text x="380" y="180" class="lbl">domain-a (group)</text>
+
+  <rect x="100" y="220" width="370" height="38" rx="4" class="box-prj"/>
+  <text x="285" y="240" class="lbl">proj-1, proj-2, proj-3 (inherit from domain-a)</text>
+
+  <path d="M 190 88 L 190 160" class="arrow-share"/>
+  <text x="225" y="125" class="small">project-level share</text>
+
+  <path d="M 380 88 L 380 160" class="arrow-share"/>
+  <text x="430" y="125" class="small">group-level share</text>
+  <path d="M 380 198 L 380 220" class="arrow"/>
+
+  <text x="275" y="295" class="small">Mixed model. Project-level shares preserved for
+  fast onboarding,</text>
+  <text x="275" y="310" class="small">domain-level shares already in place for the
+  target state.</text>
+
+  <line x1="550" y1="40" x2="550" y2="370" class="divider"/>
+
+  <!-- Approach 2 -->
+  <text x="825" y="25" class="ttl">Approach 2 — Domain-centric (target)</text>
+
+  <rect x="650" y="50" width="180" height="38" rx="4" class="box-iam"/>
+  <text x="740" y="70" class="lbl">gl-domain-b-dev</text>
+  <text x="740" y="84" class="small">SailPoint group</text>
+
+  <rect x="850" y="50" width="180" height="38" rx="4" class="box-iam"/>
+  <text x="940" y="70" class="lbl">gl-domain-b-maint</text>
+  <text x="940" y="84" class="small">SailPoint group</text>
+
+  <rect x="700" y="160" width="280" height="38" rx="4" class="box-grp"/>
+  <text x="840" y="180" class="lbl">domain-b (group)</text>
+
+  <rect x="700" y="220" width="280" height="38" rx="4" class="box-prj"/>
+  <text x="840" y="240" class="lbl">proj-1, proj-2, proj-3 (all inherit)</text>
+
+  <path d="M 740 88 L 800 160" class="arrow-share"/>
+  <path d="M 940 88 L 880 160" class="arrow-share"/>
+  <text x="840" y="125" class="small">group-level share only</text>
+  <path d="M 840 198 L 840 220" class="arrow"/>
+
+  <text x="825" y="295" class="small">Pure GitLab-native. One share per
+  domain × role.</text>
+  <text x="825" y="310" class="small">No project-level access management.
+  Adding a project = zero-config.</text>
+</svg>
+<div class="caption">Figure 1 — Approach 1 (hybrid, transition) vs
+  Approach 2 (domain-centric, target). The PoC validates that both work
+  and that migration between them is non-disruptive.</div>
+</div>
+
+<p>
+  <strong>Result:</strong> the PoC ran 13 phases end-to-end against a live
+  GitLab Ultimate instance and 21 UI evidence scenarios. <strong class="pass">
+  24 of 24 live verification checks passed.</strong> Every claim made in the
+  reference design is supported by an API trace and a browser screenshot.
+</p>
+
+
+<!-- =====================================================================
+     2. WHAT THE POC PROVES
+     ===================================================================== -->
+<h2>2. What the PoC proves</h2>
+
+<p>
+  Five top-level claims, each backed by one or more scenarios.
+</p>
+
+<div class="claim">
+  <h4>Claim 1 — Inheritance flows down, siblings are isolated</h4>
+  <p>
+    Granting a role at a group level propagates to every subgroup and
+    project beneath it. Sibling groups (different domains) cannot see each
+    other unless explicitly shared. Access can be <em>raised</em> at a lower
+    level, but never <em>lowered</em> below the inherited floor.
+  </p>
+  <p class="muted">
+    <strong>Validated by:</strong> Scenarios 02 (user-membership), 08
+    (inheritance), 08b (sibling-isolation), 10h (variable inheritance).
+  </p>
+</div>
+
+<div class="claim">
+  <h4>Claim 2 — Branch / tag / environment protection enforces the right
+  boundaries at the right people</h4>
+  <p>
+    Protected branches block direct push and require code-owner approval.
+    Protected tags restrict release tag creation to Maintainers. Protected
+    environments combine an allowed-deployer list with a separate
+    approval-required step (two-person rule for production).
+  </p>
+  <p class="muted">
+    <strong>Validated by:</strong> Scenarios 04 (protected-branch), 05
+    (protected-env), 06 (protected-tags), 10b (manual-jobs).
+  </p>
+</div>
+
+<div class="claim">
+  <h4>Claim 3 — Custom roles deliver fine-grained authority without
+  Maintainer creep</h4>
+  <p>
+    Three custom roles — Promoter (manages release-time CI variables),
+    Operator (manages prod environment + release branches), Security Manager
+    (waives vulnerabilities, approves security-sensitive MRs) — let
+    role-specific personas do their job at Reporter base level + a
+    targeted ability set, instead of needing Maintainer-grade write access
+    they don't otherwise need.
+  </p>
+  <p class="muted">
+    <strong>Validated by:</strong> Phase 1 (custom-role creation), Phase 9
+    (custom-role assignment), Scenarios 10b (manual-jobs), 10f
+    (cicd-settings) for negative/positive checks.
+  </p>
+</div>
+
+<div class="claim">
+  <h4>Claim 4 — Inner sourcing supports forked contributions without
+  granting upstream write access</h4>
+  <p>
+    External contributors with only Minimal Access at the top group can
+    discover Internal projects, fork them into their personal namespace,
+    open MRs back to the upstream, and have those MRs merged after a
+    Trusted-Committer review. They never hold push or merge rights on the
+    upstream project.
+  </p>
+  <p class="muted">
+    <strong>Validated by:</strong> Scenario 07 (inner-source), 10c
+    (fork-isolation), 10c2 (fork-as-dan).
+  </p>
+</div>
+
+<div class="claim">
+  <h4>Claim 5 — Approach 1 → Approach 2 migration is non-disruptive</h4>
+  <p>
+    Removing the Bitbucket-style project-level shares (Approach 1) does not
+    break access for users who are already members of the corresponding
+    SailPoint domain group (Approach 2). The migration can be done one
+    project at a time, with no observable outage.
+  </p>
+  <p class="muted">
+    <strong>Validated by:</strong> Phase 13 (migration), Scenario 09
+    (audit).
+  </p>
+</div>
+
+
+<!-- =====================================================================
+     3. HIERARCHY DIAGRAM
+     ===================================================================== -->
+<h2>3. The PoC layout</h2>
+
+<p>
+  The hierarchy is intentionally <strong>flat</strong> — business domains
+  (long-lived application groupings) sit directly under the top-level group.
+  Each app appears in exactly one place in the tree, regardless of how many
+  environments it deploys to.
+</p>
+
+<div class="diagram">
+<svg viewBox="0 0 1100 380" xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="PoC hierarchy diagram">
+  <style>
+    .top    { fill: #172b4d; stroke: #172b4d; }
+    .domain { fill: #fffae6; stroke: #ff991f; stroke-width: 1.5; }
+    .proj   { fill: #fff;    stroke: #6b778c; stroke-width: 1; }
+    .restr  { fill: #ffebe6; stroke: #de350b; stroke-width: 1.5; }
+    .iam    { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .platform { fill: #deebff; stroke: #0052cc; stroke-width: 1.5; }
+    .lbl    { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #000; text-anchor: middle; }
+    .lbl-w  { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #fff; text-anchor: middle; font-weight: 600; }
+    .small  { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #42526e; text-anchor: middle; }
+    .line   { stroke: #6b778c; stroke-width: 1; fill: none; }
+  </style>
+
+  <!-- Top -->
+  <rect x="450" y="10" width="200" height="34" rx="4" class="top"/>
+  <text x="550" y="32" class="lbl-w">acme-poc (top group)</text>
+
+  <!-- 4 peer subgroups -->
+  <line x1="550" y1="44" x2="550" y2="62" class="line"/>
+  <line x1="160" y1="62" x2="940" y2="62" class="line"/>
+
+  <line x1="200" y1="62" x2="200" y2="78" class="line"/>
+  <rect x="120" y="78" width="160" height="32" rx="4" class="domain"/>
+  <text x="200" y="98" class="lbl">domain-a</text>
+
+  <line x1="430" y1="62" x2="430" y2="78" class="line"/>
+  <rect x="350" y="78" width="160" height="32" rx="4" class="domain"/>
+  <text x="430" y="98" class="lbl">domain-b</text>
+
+  <line x1="660" y1="62" x2="660" y2="78" class="line"/>
+  <rect x="580" y="78" width="160" height="32" rx="4" class="platform"/>
+  <text x="660" y="98" class="lbl">platform</text>
+
+  <line x1="900" y1="62" x2="900" y2="78" class="line"/>
+  <rect x="820" y="78" width="160" height="32" rx="4" class="iam"/>
+  <text x="900" y="98" class="lbl">iam-sim (Private)</text>
+
+  <!-- domain-a children -->
+  <line x1="200" y1="110" x2="200" y2="135" class="line"/>
+  <line x1="120" y1="135" x2="280" y2="135" class="line"/>
+
+  <line x1="140" y1="135" x2="140" y2="148" class="line"/>
+  <rect x="100" y="148" width="80" height="28" rx="4" class="proj"/>
+  <text x="140" y="166" class="lbl">proj-1</text>
+
+  <line x1="200" y1="135" x2="200" y2="148" class="line"/>
+  <rect x="160" y="148" width="80" height="28" rx="4" class="proj"/>
+  <text x="200" y="166" class="lbl">proj-2</text>
+
+  <line x1="260" y1="135" x2="260" y2="148" class="line"/>
+  <rect x="220" y="148" width="80" height="28" rx="4" class="proj"/>
+  <text x="260" y="166" class="lbl">proj-3</text>
+
+  <line x1="200" y1="176" x2="200" y2="195" class="line"/>
+  <rect x="120" y="195" width="160" height="30" rx="4" class="restr"/>
+  <text x="200" y="214" class="lbl">restricted/ (Private)</text>
+
+  <line x1="200" y1="225" x2="200" y2="240" class="line"/>
+  <rect x="120" y="240" width="160" height="28" rx="4" class="proj"/>
+  <text x="200" y="258" class="lbl">restricted-proj-1</text>
+
+  <!-- domain-b children -->
+  <line x1="430" y1="110" x2="430" y2="135" class="line"/>
+  <line x1="350" y1="135" x2="510" y2="135" class="line"/>
+
+  <line x1="370" y1="135" x2="370" y2="148" class="line"/>
+  <rect x="330" y="148" width="80" height="28" rx="4" class="proj"/>
+  <text x="370" y="166" class="lbl">proj-1</text>
+
+  <line x1="430" y1="135" x2="430" y2="148" class="line"/>
+  <rect x="390" y="148" width="80" height="28" rx="4" class="proj"/>
+  <text x="430" y="166" class="lbl">proj-2</text>
+
+  <line x1="490" y1="135" x2="490" y2="148" class="line"/>
+  <rect x="450" y="148" width="80" height="28" rx="4" class="proj"/>
+  <text x="490" y="166" class="lbl">proj-3</text>
+
+  <!-- platform child -->
+  <line x1="660" y1="110" x2="660" y2="148" class="line"/>
+  <rect x="580" y="148" width="160" height="28" rx="4" class="proj"/>
+  <text x="660" y="166" class="lbl">ci-templates</text>
+
+  <!-- iam-sim subtree -->
+  <line x1="900" y1="110" x2="900" y2="135" class="line"/>
+  <line x1="800" y1="135" x2="1000" y2="135" class="line"/>
+
+  <line x1="830" y1="135" x2="830" y2="148" class="line"/>
+  <rect x="780" y="148" width="100" height="28" rx="4" class="iam"/>
+  <text x="830" y="166" class="lbl">sscam</text>
+  <text x="830" y="195" class="small">domain-a-proj-1_w/r</text>
+  <text x="830" y="208" class="small">domain-a-proj-2_w/r</text>
+
+  <line x1="920" y1="135" x2="920" y2="148" class="line"/>
+  <rect x="880" y="148" width="100" height="28" rx="4" class="iam"/>
+  <text x="930" y="166" class="lbl">sailpoint</text>
+  <text x="930" y="195" class="small">gl-domain-a-{r,d,m,o}</text>
+  <text x="930" y="208" class="small">gl-domain-b-{r,d,m,o}</text>
+
+  <line x1="970" y1="135" x2="970" y2="148" class="line"/>
+  <rect x="980" y="148" width="80" height="28" rx="4" class="iam"/>
+  <text x="1020" y="166" class="lbl">p2p</text>
+  <text x="1020" y="195" class="small">IAM_DevOps_*</text>
+
+  <!-- Legend -->
+  <rect x="50" y="320" width="20" height="14" class="domain"/>
+  <text x="80" y="332" class="small" style="text-anchor:start;">business domain</text>
+  <rect x="220" y="320" width="20" height="14" class="proj"/>
+  <text x="250" y="332" class="small" style="text-anchor:start;">project (Internal)</text>
+  <rect x="380" y="320" width="20" height="14" class="restr"/>
+  <text x="410" y="332" class="small" style="text-anchor:start;">restricted/ (Private — confidential)</text>
+  <rect x="650" y="320" width="20" height="14" class="platform"/>
+  <text x="680" y="332" class="small" style="text-anchor:start;">platform group</text>
+  <rect x="800" y="320" width="20" height="14" class="iam"/>
+  <text x="830" y="332" class="small" style="text-anchor:start;">simulated IAM groups</text>
+</svg>
+<div class="caption">Figure 2 — The PoC group hierarchy. Each business
+  domain sits directly under the top group. The <code>iam-sim/</code> subtree
+  simulates the SSCAM, SailPoint and P2P IAM systems that hold real LDAP
+  groups in production. <code>platform/</code> hosts shared CI templates.</div>
+</div>
+
+<div class="callout-info">
+  <strong>What about deployment zones (live-prod, non-live, cloud landing zone)?</strong>
+  Deployment-model isolation is <em>not</em> expressed by group nesting in this
+  hierarchy. It is expressed instead by:
+  <ul>
+    <li><strong>Environment names</strong> on protected environments
+        (<code>staging</code>, <code>prod</code>) — see Scenario 05.</li>
+    <li><strong>Environment-scoped CI variables</strong> (e.g.
+        <code>PROD_DEPLOY_TOKEN</code> with <code>environment_scope=prod</code>)
+        — only visible to jobs that declare the matching environment.
+        See Scenarios 10a, 10i.</li>
+    <li><strong>Group-level runners tagged by zone</strong> (e.g. a
+        <code>prod-runner</code> with the Protected flag) — only picks up
+        jobs from protected refs, never from feature branches. See
+        Scenario 10e.</li>
+  </ul>
+  This keeps each app in exactly one place in the tree (avoiding the
+  per-zone duplication that would otherwise force triple membership and
+  triple CI variable management) while still giving you per-zone runner
+  isolation, per-zone secrets, and per-zone audit reporting.
+</div>
+
+
+<!-- =====================================================================
+     4. PERSONAS
+     ===================================================================== -->
+<h2>4. Personas</h2>
+
+<p>
+  Eight test users + <code>root</code> exercise the role boundaries. Each
+  persona is added to one or more simulated IAM groups, which are then
+  shared with the real PoC projects — exactly as a real LDAP-bound
+  GitLab instance would work.
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width: 12%;">Persona</th>
+      <th style="width: 18%;">Role(s)</th>
+      <th>What they're meant to demonstrate</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><code>poc-alice</code></td>
+      <td>Developer (default)</td>
+      <td>Default contributor. Validates least-privilege baseline: pushes features, can't merge to main, can't deploy prod, can't see protected variables.</td></tr>
+    <tr><td><code>poc-bob</code></td>
+      <td>Maintainer (default)</td>
+      <td>Trusted Committer. Reviews + merges MRs, approves prod deployments as the second person of the two-person rule, manages protected branches.</td></tr>
+    <tr><td><code>poc-carol</code></td>
+      <td>Reporter + <strong>Operator</strong> (custom)</td>
+      <td>SRE who plays manual deploy-prod jobs and manages prod environment gates — without holding Maintainer write rights on source code.</td></tr>
+    <tr><td><code>poc-paul</code></td>
+      <td>Reporter + <strong>Promoter</strong> (custom)</td>
+      <td>Release manager who manages deploy-time CI variables for promotion pipelines — without write access to code.</td></tr>
+    <tr><td><code>poc-sam</code></td>
+      <td>Reporter + <strong>Security Manager</strong> (custom)</td>
+      <td>Vulnerability waiver + approver of security-sensitive MRs (e.g. <code>/infra/</code> changes per <code>CODEOWNERS</code>) — without write access to code.</td></tr>
+    <tr><td><code>poc-rita</code></td>
+      <td>Reporter (default)</td>
+      <td>Read-only auditor. Verifies pull-only access is enough to inspect pipeline logs and download artifacts.</td></tr>
+    <tr><td><code>poc-dan</code></td>
+      <td>Minimal Access (default)</td>
+      <td>External contributor for inner-source flow. No direct project role — discovers Internal projects, forks, opens MRs from the fork.</td></tr>
+    <tr><td><code>poc-con</code></td>
+      <td>Reporter (default)</td>
+      <td>Confidential reader. Member of <code>gl-restricted-read</code>, sees only the Private <code>restricted-proj-1</code>. Validates the <code>restricted/</code> isolation pattern.</td></tr>
+    <tr><td><code>root</code></td>
+      <td>Instance Admin</td>
+      <td>Verifies admin-only operations work: custom-role creation, audit access, user impersonation.</td></tr>
+  </tbody>
+</table>
+
+<p class="muted">
+  See <a href="roles-and-personas.html"><code>roles-and-personas.html</code></a> for
+  the full Persona × Action capability matrix (25 actions, with footnotes).
+</p>
+
+
+<!-- =====================================================================
+     5. SCENARIOS — the meat of the report
+     ===================================================================== -->
+<h2>5. Scenarios — what was tested, why it matters, and the proof</h2>
+
+<p>
+  Each scenario was executed by the orchestrator (<code>run_poc.py</code>)
+  immediately after the API phase that creates the underlying state.
+  Screenshots below are full-page Chromium captures from the live
+  instance, taken with the persona logged in.
+</p>
+
+<div class="toc">
+  <strong>Jump to scenario</strong>
+  <ol>
+    <li><a href="#sc-01">01 — Hierarchy &amp; top-level group tree</a></li>
+    <li><a href="#sc-02">02 — User invitation &amp; access assignment</a></li>
+    <li><a href="#sc-03">03 — Baseline access enforcement (Alice as Developer)</a></li>
+    <li><a href="#sc-04">04 — Protected branch &amp; merge flow</a></li>
+    <li><a href="#sc-05">05 — Protected environment &amp; deployment</a></li>
+    <li><a href="#sc-06">06 — Protected tags</a></li>
+    <li><a href="#sc-07">07 — Inner source contribution (Dan)</a></li>
+    <li><a href="#sc-08">08 — Inheritance &amp; sovereignty</a></li>
+    <li><a href="#sc-08b">08b — Sibling isolation (Alice can't read restricted)</a></li>
+    <li><a href="#sc-09">09 — Audit &amp; review</a></li>
+    <li><a href="#sc-10a">10a — Protected variables on feature vs main</a></li>
+    <li><a href="#sc-10b">10b — Manual job authorization</a></li>
+    <li><a href="#sc-10c">10c — Fork pipeline isolation</a></li>
+    <li><a href="#sc-10c2">10c2 — Dan blocked from upstream CI/CD settings</a></li>
+    <li><a href="#sc-10d">10d — CI_JOB_TOKEN scoping</a></li>
+    <li><a href="#sc-10e">10e — Runner scoping</a></li>
+    <li><a href="#sc-10f">10f — Alice can't edit CI/CD settings</a></li>
+    <li><a href="#sc-10f2">10f2 — Bob can edit CI/CD settings</a></li>
+    <li><a href="#sc-10g">10g — Scheduled pipeline ownership</a></li>
+    <li><a href="#sc-10h">10h — Variable inheritance and override</a></li>
+    <li><a href="#sc-10i">10i — Environment-scoped variables</a></li>
+  </ol>
+</div>
+
+<!-- ===== SCENARIO 1 ===== -->
+<div class="scenario" id="sc-01">
+  <h4>01 — Hierarchy &amp; top-level group tree</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 02 — Hierarchy skeleton</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">root</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (4/4 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> The whole PoC depends on
+    a hierarchy that mirrors the analysis design — flat business domains
+    under the top group, no deployment-zone wrapper. Wrong shape here =
+    every downstream claim is invalid.</div>
+  <div class="what"><strong>What's tested:</strong> Top group, business-domain
+    subgroups (<code>domain-a</code>, <code>domain-b</code>), the
+    <code>platform/ci-templates</code> project, and the
+    <code>iam-sim/</code> simulated-LDAP container all created and
+    visible.</div>
+  <div class="expected"><strong>Expected:</strong> Each of the navigated URLs
+    returns HTTP 200 and shows the live tree.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/01-hierarchy-top__01__top-group-members--overview.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/01-hierarchy-top__01__top-group-members--overview.png" alt="Top group members + overview"></a>
+  <div class="shot-caption">Top-level <code>acme-poc</code> group members overview.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/01-hierarchy-top__02__top-group-tree-flat-domains.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/01-hierarchy-top__02__top-group-tree-flat-domains.png" alt="Top group tree (flat domains)"></a>
+  <div class="shot-caption">The flat top-group tree — business domains, platform, and iam-sim are peers.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/01-hierarchy-top__03__pilot-project-domain-aproj-1.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/01-hierarchy-top__03__pilot-project-domain-aproj-1.png" alt="Pilot project domain-a/proj-1"></a>
+  <div class="shot-caption">The pilot project <code>domain-a/proj-1</code> as it appears after Phase 2.</div>
+</div>
+
+<!-- ===== SCENARIO 2 ===== -->
+<div class="scenario" id="sc-02">
+  <h4>02 — User invitation &amp; access assignment</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 04 — Test users + initial membership</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">root</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (4/4 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Verifies that GitLab
+    correctly records the role each persona was given via group share
+    (Alice as Developer, Bob as Maintainer, Carol as Reporter+Operator, etc.),
+    and that direct-vs-inherited badges show the right source. This is the
+    primary control plane for "who can do what".</div>
+  <div class="what"><strong>What's tested:</strong> Members views at
+    top-level group, business-domain subgroup, and individual project. Plus
+    the Admin → Users page where impersonation is initiated.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/02-user-membership__01__top-level-acme-members-dan-as-guest.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/02-user-membership__01__top-level-acme-members-dan-as-guest.png" alt="Top-level acme members"></a>
+  <div class="shot-caption">Top-level <code>acme-poc</code> members. Dan appears with Minimal Access — the inner-source contributor pattern.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/02-user-membership__03__domain-aproj-1-members-direct--inherited.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/02-user-membership__03__domain-aproj-1-members-direct--inherited.png" alt="domain-a/proj-1 members"></a>
+  <div class="shot-caption">Members of <code>domain-a/proj-1</code> showing the direct + inherited mix.</div>
+</div>
+
+<!-- ===== SCENARIO 3 ===== -->
+<div class="scenario" id="sc-03">
+  <h4>03 — Baseline access enforcement (Alice as Developer)</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 06 — Approach 2 sharing</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">poc-alice</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (2/2 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Confirms that GitLab's
+    out-of-the-box Developer role enforces the right baseline. If Alice can
+    see and use the project but cannot delete it or edit settings, the role
+    layering above (custom roles, protections) is meaningful.</div>
+  <div class="what"><strong>What's tested:</strong> Alice navigates to
+    <code>domain-a/proj-1</code>; the Settings menu is hidden, the Delete
+    button is absent. She also sees <code>ci-templates</code> as a readable
+    Internal project (inner sourcing) without the ability to push.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/03-baseline-access__01__domain-aproj-1-project-as-alice-developer.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/03-baseline-access__01__domain-aproj-1-project-as-alice-developer.png" alt="proj-1 as Alice"></a>
+  <div class="shot-caption">Alice's view of <code>domain-a/proj-1</code> — Code/CI sidebar visible, no Settings access.</div>
+</div>
+
+<!-- ===== SCENARIO 4 ===== -->
+<div class="scenario" id="sc-04">
+  <h4>04 — Protected branch &amp; merge flow</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 07 — Branch / tag / env protection</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">root</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (4/4 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> The cornerstone of the
+    write-control story. A protected <code>main</code> with "no one can push,
+    Maintainers can merge, code-owner approval required" is the closest
+    GitLab equivalent of Bitbucket's branch-permission model — and goes
+    further with explicit approval rules.</div>
+  <div class="what"><strong>What's tested:</strong> The protected branches
+    settings page shows the rule. The MR settings page shows the approval
+    rule (prevent author approval, minimum 1 approver). The MR list and
+    <code>CODEOWNERS</code> file confirm the policy is wired up to actual
+    review traffic.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/04-protected-branch__01__protected-branches-config-main--maintainer-merge-no-push.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/04-protected-branch__01__protected-branches-config-main--maintainer-merge-no-push.png" alt="Protected branches config"></a>
+  <div class="shot-caption">Protected branches config — <code>main</code> with no-push, Maintainer-merge, code-owner approval required.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/04-protected-branch__04__codeowners-file-in-repo-root.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/04-protected-branch__04__codeowners-file-in-repo-root.png" alt="CODEOWNERS file"></a>
+  <div class="shot-caption">The committed <code>CODEOWNERS</code> file routing reviews to IAM groups.</div>
+</div>
+
+<!-- ===== SCENARIO 5 ===== -->
+<div class="scenario" id="sc-05">
+  <h4>05 — Protected environment &amp; deployment</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 07</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">root</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (3/3 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Production deployments
+    are the highest-risk action in the system. Protected environments combine
+    "who can deploy" with "who must approve" — a true two-person rule that
+    Bitbucket cannot express natively.</div>
+  <div class="what"><strong>What's tested:</strong> Both <code>staging</code>
+    and <code>prod</code> environments exist; <code>prod</code> is protected
+    with a Maintainer-floor allowed-deployer list and a separate approval
+    requirement. The pipeline view shows the manual <code>deploy_prod</code>
+    job.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/05-protected-env__01__environments-list.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/05-protected-env__01__environments-list.png" alt="Environments list"></a>
+  <div class="shot-caption">The Environments list showing both <code>staging</code> and <code>prod</code>.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/05-protected-env__03__pipeline-list-deploy-prod-manual--gated.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/05-protected-env__03__pipeline-list-deploy-prod-manual--gated.png" alt="Pipeline with manual deploy_prod"></a>
+  <div class="shot-caption">A pipeline with the manual <code>deploy_prod</code> job — gated until a permitted user plays it.</div>
+</div>
+
+<!-- ===== SCENARIO 6 ===== -->
+<div class="scenario" id="sc-06">
+  <h4>06 — Protected tags</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 07</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">root</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (2/2 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Release tag creation is
+    a common attack surface for malicious or accidental promotion. Protected
+    tag patterns let only Maintainers cut a <code>v*</code> release.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/06-protected-tags__01__protected-tags-config.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/06-protected-tags__01__protected-tags-config.png" alt="Protected tags config"></a>
+  <div class="shot-caption">Protected tags config restricting <code>v*</code> creation to Maintainers.</div>
+</div>
+
+<!-- ===== SCENARIO 7 ===== -->
+<div class="scenario" id="sc-07">
+  <h4>07 — Inner source contribution (Dan)</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 10 — Inner sourcing</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">poc-dan</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (4/4 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> The "inner source by
+    default" principle from the design only works if outsiders can actually
+    discover, fork, and contribute to projects without holding any role.
+    This is one of the strongest justifications for the GitLab move —
+    Bitbucket can't do this without manual project-level adds for every
+    contributor.</div>
+  <div class="what"><strong>What's tested:</strong> Dan (Minimal Access at
+    top group, no project role) browses the Explore page and sees Internal
+    projects; opens <code>domain-a/proj-1</code> and can read but cannot
+    push; forks it into his personal namespace; the upstream MR list shows
+    his fork-sourced contribution.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/07-inner-source__01__explore-projects-as-dan-internal-projects-visible.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/07-inner-source__01__explore-projects-as-dan-internal-projects-visible.png" alt="Explore as Dan"></a>
+  <div class="shot-caption">Dan's Explore page showing Internal projects he can discover.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/07-inner-source__03__dans-fork-in-his-personal-namespace.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/07-inner-source__03__dans-fork-in-his-personal-namespace.png" alt="Dan's fork"></a>
+  <div class="shot-caption">Dan's fork at <code>poc-dan/proj-1</code> — full write rights on <em>his copy</em>, none on the upstream.</div>
+</div>
+
+<!-- ===== SCENARIO 8 ===== -->
+<div class="scenario" id="sc-08">
+  <h4>08 — Inheritance &amp; sovereignty</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 06</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">root</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (3/3 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Inheritance is the
+    primary mechanism that makes group-centric authorization scale. If a
+    role granted at the domain level doesn't actually flow down to every
+    project beneath, the whole Approach 2 model collapses.</div>
+  <div class="what"><strong>What's tested:</strong> Members on a project
+    that has no direct shares (<code>domain-a/proj-2</code>) — every entry
+    is "inherited from..."; members on the pilot project where roles were
+    raised — both inherited and direct entries visible; tree view of the
+    flat top group showing both domains as peers.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/08-inheritance__01__domain-aproj-2-members-inherited-from-payments.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/08-inheritance__01__domain-aproj-2-members-inherited-from-payments.png" alt="proj-2 members inherited"></a>
+  <div class="shot-caption"><code>domain-a/proj-2</code> members — every entry is inherited; the project has no direct member configuration.</div>
+</div>
+
+<!-- ===== SCENARIO 8b ===== -->
+<div class="scenario" id="sc-08b">
+  <h4>08b — Sibling isolation (Alice can't read restricted)</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 06</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">poc-alice</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (1/1, expected 404)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Restricted/confidential
+    code is the inverse of inner sourcing — there must be a way to
+    <em>hide</em> certain projects even from authenticated users.
+    The <code>restricted/</code> Private subgroup pattern delivers this.</div>
+  <div class="what"><strong>What's tested:</strong> Alice (full Developer
+    on <code>domain-a</code>) navigates directly to
+    <code>domain-a/restricted/restricted-proj-1</code>. Returns 404 — GitLab
+    deliberately returns 404 not 403 so existence isn't leaked.</div>
+  <div class="expected"><strong>Expected:</strong> HTTP 404. Anything else
+    is a control failure.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/08b-sibling-isolation__01__restricted-proj-1-private-as-alice--should-404.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/08b-sibling-isolation__01__restricted-proj-1-private-as-alice--should-404.png" alt="404 as Alice"></a>
+  <div class="shot-caption">Alice's view of <code>restricted-proj-1</code> — 404, as designed.</div>
+</div>
+
+<!-- ===== SCENARIO 9 ===== -->
+<div class="scenario" id="sc-09">
+  <h4>09 — Audit &amp; review</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 13 — Migration (audit captures everything)</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">root</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (4/4 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Compliance and incident
+    response need an authoritative log. GitLab's audit events page captures
+    role grants, branch-protection changes, and deploy approvals at both
+    group and project level — what we need for SOX-style reviews.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/09-audit__01__top-level-group-audit-events.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/09-audit__01__top-level-group-audit-events.png" alt="Top-level audit events"></a>
+  <div class="shot-caption">Top-level group audit events showing membership and protection changes.</div>
+</div>
+
+<!-- ===== SCENARIO 10a ===== -->
+<div class="scenario" id="sc-10a">
+  <h4>10a — Protected variables on feature vs main</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 12 — CI/CD scenario setup</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">root</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (2/2 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Protected, masked,
+    environment-scoped CI variables are the standard pattern for production
+    secrets. The PoC verifies they're invisible on feature-branch pipelines
+    and only exposed when a job declares <code>environment: prod</code>.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/10a-protected-vars__01__cicd-variables-list-protected--env-scoped-to-prod.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/10a-protected-vars__01__cicd-variables-list-protected--env-scoped-to-prod.png" alt="CI vars protected"></a>
+  <div class="shot-caption">CI/CD variables with <code>PROD_DEPLOY_TOKEN</code> protected, masked, env-scoped to <code>prod</code>.</div>
+</div>
+
+<!-- ===== SCENARIO 10b ===== -->
+<div class="scenario" id="sc-10b">
+  <h4>10b — Manual job authorization</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 12</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">root</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (2/2 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Important nuance —
+    user-specific restriction on a manual job <em>only</em> works when the job
+    declares an environment that's protected with an allowed-deployer list.
+    A bare manual job without <code>environment:</code> is gated only by base
+    role, which is a common configuration trap.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/10b-manual-jobs__01__latest-pipeline-showing-manual-jobs.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/10b-manual-jobs__01__latest-pipeline-showing-manual-jobs.png" alt="Manual jobs"></a>
+  <div class="shot-caption">Pipeline view with the gated <code>deploy_prod</code> manual job alongside an unrestricted one.</div>
+</div>
+
+<!-- ===== SCENARIO 10c ===== -->
+<div class="scenario" id="sc-10c">
+  <h4>10c — Fork pipeline isolation</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 12</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">root</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (2/2 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> The flip side of inner
+    sourcing — fork pipelines that contributors can submit must <em>never</em>
+    expose the upstream's protected variables, even if a Maintainer approves
+    the pipeline to run. Otherwise inner-source becomes a credential
+    exfiltration vector.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/10c-fork-isolation__01__mr-list-including-fork-sourced-mr.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/10c-fork-isolation__01__mr-list-including-fork-sourced-mr.png" alt="MR list with fork MR"></a>
+  <div class="shot-caption">MR list including the fork-sourced contribution from Dan.</div>
+</div>
+
+<!-- ===== SCENARIO 10c2 ===== -->
+<div class="scenario" id="sc-10c2">
+  <h4>10c2 — Dan blocked from upstream CI/CD settings</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 12</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">poc-dan</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (1/1, expected 404)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Direct verification of
+    the inner-source security boundary. Dan can fork and contribute, but
+    cannot reach the upstream's settings — even when looking by direct URL.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/10c2-fork-as-dan__01__upstream-domain-aproj-1-cicd-settings-as-dan-should-be-denie.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/10c2-fork-as-dan__01__upstream-domain-aproj-1-cicd-settings-as-dan-should-be-denie.png" alt="Dan denied"></a>
+  <div class="shot-caption">404 page for Dan attempting <code>domain-a/proj-1/-/settings/ci_cd</code>.</div>
+</div>
+
+<!-- ===== SCENARIO 10d ===== -->
+<div class="scenario" id="sc-10d">
+  <h4>10d — CI_JOB_TOKEN scoping</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 12</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">root</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (2/2 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> <code>CI_JOB_TOKEN</code> is
+    auto-injected into every pipeline. Without scoping it could be used to
+    pivot from a low-trust project to read a high-trust one. The
+    job-token allowlist is default-deny and must be explicitly opened up.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/10d-job-token__01__job-token-allowlist-on-domain-aproj-1-target-of-inbound-call.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/10d-job-token__01__job-token-allowlist-on-domain-aproj-1-target-of-inbound-call.png" alt="Job token allowlist"></a>
+  <div class="shot-caption">Inbound job-token allowlist on <code>domain-a/proj-1</code> — explicit + minimal.</div>
+</div>
+
+<!-- ===== SCENARIO 10e ===== -->
+<div class="scenario" id="sc-10e">
+  <h4>10e — Runner scoping</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 11 — Zone-level CI/CD inheritance</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">root</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (3/3 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Group-scoped runners
+    are how zone isolation flows into the CI layer in the flat hierarchy —
+    a runner registered on <code>domain-a</code> with the Protected flag
+    only picks up jobs from protected refs (e.g. tags or
+    <code>main</code>), never from feature branches. Combined with
+    environment-scoped variables, this is how "live-prod" isolation is
+    enforced without needing a deployment-zone group.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/10e-runner-scoping__01__group-level-runners-on-payments.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/10e-runner-scoping__01__group-level-runners-on-payments.png" alt="Group runners"></a>
+  <div class="shot-caption">Group-level runners scoped to the <code>domain-a</code> hierarchy.</div>
+</div>
+
+<!-- ===== SCENARIO 10f ===== -->
+<div class="scenario" id="sc-10f">
+  <h4>10f — Alice can't edit CI/CD settings</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 06</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">poc-alice</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (2/2 expected denials)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Maintainer is the
+    minimum role for CI/CD configuration. Verifying that a Developer cannot
+    weaken protections (variables, branch rules) is essential to the
+    overall write-control story.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/10f-cicd-settings-alice__01__domain-aproj-1-cicd-settings-as-alice-denied--developer-cant.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/10f-cicd-settings-alice__01__domain-aproj-1-cicd-settings-as-alice-denied--developer-cant.png" alt="Alice denied CI settings"></a>
+  <div class="shot-caption">Alice's attempt to load CI/CD settings → 404, as designed.</div>
+</div>
+
+<!-- ===== SCENARIO 10f2 ===== -->
+<div class="scenario" id="sc-10f2">
+  <h4>10f2 — Bob can edit CI/CD settings</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 06</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">poc-bob</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (1/1)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Positive control —
+    Maintainer must succeed where Developer fails, otherwise we'd have
+    blanket lockout.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/10f2-cicd-settings-bob__01__domain-aproj-1-cicd-settings-as-bob-full-access.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/10f2-cicd-settings-bob__01__domain-aproj-1-cicd-settings-as-bob-full-access.png" alt="Bob CI settings"></a>
+  <div class="shot-caption">Bob's view of the same CI/CD settings page — full access.</div>
+</div>
+
+<!-- ===== SCENARIO 10g ===== -->
+<div class="scenario" id="sc-10g">
+  <h4>10g — Scheduled pipeline ownership</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 12</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">root</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (2/2 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Scheduled pipelines run
+    with the live permissions of their owner — not frozen-in permissions.
+    If the owner leaves or moves teams, scheduled jobs that need elevated
+    rights start failing. Schedule ownership should be held by a
+    service-style account for production-critical automation.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/10g-schedules__01__pipeline-schedules-owner-column-take-ownership-control.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/10g-schedules__01__pipeline-schedules-owner-column-take-ownership-control.png" alt="Pipeline schedules"></a>
+  <div class="shot-caption">Pipeline schedules with the explicit owner column and the "Take ownership" control.</div>
+</div>
+
+<!-- ===== SCENARIO 10h ===== -->
+<div class="scenario" id="sc-10h">
+  <h4>10h — Variable inheritance and override</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 11</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">root</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (3/3 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Variable inheritance
+    follows the same rules as access inheritance — group variables flow down,
+    project variables override at project scope, sibling groups don't see
+    each other. This is essential for managing shared deploy tokens at the
+    zone level without duplicating them per project.</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/10h-variable-inheritance__01__group-level-variables-on-payments.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/10h-variable-inheritance__01__group-level-variables-on-payments.png" alt="Group variables"></a>
+  <div class="shot-caption">Group-level variables on the <code>domain-a</code> group — inherited by every project beneath.</div>
+</div>
+
+<!-- ===== SCENARIO 10i ===== -->
+<div class="scenario" id="sc-10i">
+  <h4>10i — Environment-scoped variables</h4>
+  <div class="meta">
+    <span><strong>Phase:</strong> 11</span>
+    <span><strong>Persona:</strong> <span class="persona-tag">root</span></span>
+    <span><strong>Result:</strong> <span class="pass">PASS (3/3 shots)</span></span>
+  </div>
+  <div class="why"><strong>Why it matters:</strong> Same variable key can
+    safely carry different values across environments without cross-leakage.
+    The standard pattern for secrets that vary per stage (staging vs prod
+    deploy keys, API endpoints, etc.).</div>
+  <a href="gitlab-poc-scripts/ui_tests/screenshots/10i-env-scoped-vars__01__domain-aproj-1-cicd-variables-env-scoped-entries.png" target="_blank">
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/10i-env-scoped-vars__01__domain-aproj-1-cicd-variables-env-scoped-entries.png" alt="Env-scoped variables"></a>
+  <div class="shot-caption">CI/CD variables on <code>domain-a/proj-1</code> showing per-environment scopes.</div>
+</div>
+
+
+<!-- =====================================================================
+     6. HOW TO REPRODUCE
+     ===================================================================== -->
+<h2>6. How to verify yourself</h2>
+
+<p>
+  Everything in this report is reproducible. Five commands from a clean
+  machine:
+</p>
+
+<pre><code>cd gitlab-poc-scripts
+pip install -r requirements.txt
+python -m playwright install chromium
+# Edit ui_tests/test_users.properties — replace PUT-ROOT-PASSWORD-HERE
+py -3 run_poc.py --yes</code></pre>
+
+<p>
+  Total runtime is 5–8 minutes. Open
+  <code>gitlab-poc-scripts/poc-final-report.html</code> for the per-API-call
+  trace + the same screenshots inline per phase. See
+  <code>gitlab-poc-scripts/README.md</code> for the full step-by-step plus
+  troubleshooting.
+</p>
+
+<div class="callout-success">
+  <strong>Latest run result:</strong> 13/13 phases passed,
+  <strong>24/24 live verification checks passed</strong>, 21/21 UI evidence
+  scenarios captured. The PoC is in a passing state on
+  <code>http://localhost:8929</code> right now — every screenshot above is
+  from that live instance.
+</div>
+
+<p class="muted" style="margin-top: 3em;">
+  This document is generated from the <code>analysis</code> design source,
+  the live <code>gitlab-poc-scripts/config.py</code>, and the screenshots
+  produced by the Playwright runner under
+  <code>gitlab-poc-scripts/ui_tests/screenshots/</code>. Keep it updated
+  whenever any of those change.
+</p>
+
+</body>
+</html>

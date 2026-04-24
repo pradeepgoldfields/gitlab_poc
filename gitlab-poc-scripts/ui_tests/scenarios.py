@@ -25,11 +25,11 @@ rename here propagates automatically:
 from __future__ import annotations
 
 # Convenience templates — define once, reuse across scenarios.
-PAYMENTS = "{top}/live-production/domain-a"
+PAYMENTS = "{top}/domain-a"
 PAY_API = f"{PAYMENTS}/proj-1"
 PAY_UI = f"{PAYMENTS}/proj-2"
 PAY_RESTRICTED = f"{PAYMENTS}/restricted/restricted-proj-1"
-SIBLING = "{top}/live-production/domain-b"   # sibling domain
+SIBLING = "{top}/domain-b"   # sibling domain
 SIBLING_PROJ = f"{SIBLING}/proj-1"
 CI_TEMPLATES = "{top}/platform/ci-templates"
 DAN_FORK = "poc-dan/proj-1"                  # fork lands in personal namespace
@@ -49,8 +49,8 @@ SCENARIOS: list[dict] = [
         "shots": [
             {"label": "Top group members + overview",
              "path": "/groups/{top}/-/group_members"},
-            {"label": "Live-production zone tree",
-             "path": "/groups/{top}/live-production"},
+            {"label": "Top group tree (flat domains)",
+             "path": "/groups/{top}"},
             {"label": "Pilot project (domain-a/proj-1)",
              "path": f"/{PAY_API}"},
             {"label": "Shared CI templates project",
@@ -174,8 +174,8 @@ SCENARIOS: list[dict] = [
              "path": f"/{PAY_UI}/-/project_members"},
             {"label": "domain-a/proj-1 members (raised access)",
              "path": f"/{PAY_API}/-/project_members"},
-            {"label": "live-production tree at a glance",
-             "path": "/groups/{top}/live-production"},
+            {"label": "Top group tree at a glance",
+             "path": "/groups/{top}"},
         ],
     },
     {

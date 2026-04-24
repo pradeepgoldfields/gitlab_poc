@@ -36,7 +36,11 @@
 
 <p><strong>Audience:</strong> P2P platform engineering, DevOps leadership, security architects, IAM owners, and anyone reviewing the PoC results ahead of GitLab onboarding.</p>
 
-<p><strong>Scope covered:</strong> Deployment-model group hierarchy, role model including the three custom roles, Approach 1 (hybrid) authorization pattern, Approach 2 (target) authorization pattern, migration between approaches, inner sourcing via visibility inheritance, confidential project handling via <code>restricted/</code> subgroups, policy inheritance at the deployment-zone level, and CI/CD access scenarios.</p>
+<p><strong>Scope covered:</strong> Flat business-domain hierarchy (per the analysis design), role model including the three custom roles, Approach 1 (hybrid) authorization pattern, Approach 2 (target) authorization pattern, migration between approaches, inner sourcing via visibility inheritance, confidential project handling via <code>restricted/</code> subgroups, environment-scoped policy inheritance (CI variables + protected environments + group runners), and CI/CD access scenarios.</p>
+
+<div class="callout-info" style="margin-top: 0.8em;">
+<strong>Hierarchy choice:</strong> An earlier draft of this PoC nested every domain under deployment-zone subgroups (<code>live-production/&lt;domain&gt;/&lt;app&gt;</code>). On reviewing the analysis source it became clear that the deployment-model criterion in the design is a guide for <em>how to decide which group an app belongs in</em>, not a recommendation to make deployment zones the top-level shape. The current PoC uses the flat shape from the analysis's "How It Looks in GitLab" sections. Deployment-model isolation (live-prod / non-live / cloud landing zone) is enforced through environment-scoped CI variables, protected-environment names, and group-level runners — not through group nesting. Each application lives in exactly one place in the tree regardless of how many environments it deploys to.
+</div>
 
 <p><strong>Out of scope for this PoC:</strong> Live LDAP / SSCAM / SailPoint integration (simulated via manually-created GitLab groups using the design's naming conventions); live production applications; compliance framework integration; SIEM streaming. A follow-up phase is planned to validate the LDAP bindings against the SailPoint and SSCAM systems.</p>
 
@@ -117,7 +121,7 @@
 
 <h2>4. Part A — Hierarchy Construction (Deployment-Model Grouping)</h2>
 
-<p>The hierarchy was built according to the design's primary criterion: grouping by deployment and exposure model, not by organizational team. The top-level group <code>acme</code> was created with Owner restricted to P2P administrators. Beneath it, subgroups were created for each deployment zone listed in the design. Each zone contains product/domain subgroups, and each product subgroup may contain a <code>restricted/</code> subgroup for confidential projects.</p>
+<p>The hierarchy is flat, per the analysis design: the top-level group <code>acme-poc</code> directly contains the business-domain subgroups, the simulated IAM groups, and the platform group. Each business-domain subgroup may contain a <code>restricted/</code> subgroup for confidential projects. Deployment-model isolation is enforced through environment names + scoped variables + group runners (Section 11), not group nesting — so each application appears in exactly one place in the tree.</p>
 
 <div class="diagram">
 <svg viewBox="0 0 920 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Deployment-zone hierarchy">
@@ -134,94 +138,96 @@
 
   <!-- Top -->
   <rect x="380" y="15" width="160" height="44" rx="6" class="top"/>
-  <text x="460" y="38" class="lbl">acme (top-level)</text>
-  <text x="460" y="52" class="lbl-small">Owner: P2P admins only</text>
+  <text x="460" y="38" class="lbl">acme-poc (top-level)</text>
+  <text x="460" y="52" class="lbl-small">Owner: IAM_DevOps_Owner</text>
 
-  <!-- Branch down -->
-  <path d="M 460 59 L 460 80 L 120 80" class="line"/>
-  <path d="M 460 80 L 800 80" class="line"/>
+  <!-- Branch down to four flat peers -->
+  <path d="M 460 59 L 460 80" class="line"/>
+  <path d="M 120 80 L 800 80" class="line"/>
   <path d="M 120 80 L 120 110" class="line"/>
-  <path d="M 320 80 L 320 110" class="line"/>
-  <path d="M 520 80 L 520 110" class="line"/>
-  <path d="M 720 80 L 720 110" class="line"/>
+  <path d="M 350 80 L 350 110" class="line"/>
+  <path d="M 580 80 L 580 110" class="line"/>
   <path d="M 800 80 L 800 110" class="line"/>
 
-  <!-- Zones -->
-  <rect x="30" y="110" width="180" height="38" rx="6" class="zone"/>
-  <text x="120" y="134" class="lbl">live-production</text>
+  <!-- Four peer subgroups: domain-a, domain-b, platform, iam-sim -->
+  <rect x="30" y="110" width="180" height="38" rx="6" class="domain"/>
+  <text x="120" y="134" class="lbl">domain-a</text>
 
-  <rect x="230" y="110" width="180" height="38" rx="6" class="zone"/>
-  <text x="320" y="128" class="lbl">live-cloud-landing-zone</text>
-  <text x="320" y="142" class="lbl-small">(and other live-* zones)</text>
+  <rect x="260" y="110" width="180" height="38" rx="6" class="domain"/>
+  <text x="350" y="134" class="lbl">domain-b</text>
 
-  <rect x="430" y="110" width="180" height="38" rx="6" class="zone"/>
-  <text x="520" y="128" class="lbl">live-customer-premises</text>
+  <rect x="490" y="110" width="180" height="38" rx="6" class="zone"/>
+  <text x="580" y="134" class="lbl">platform</text>
 
-  <rect x="630" y="110" width="180" height="38" rx="6" class="zone"/>
-  <text x="720" y="128" class="lbl">non-live-enterprise</text>
+  <rect x="710" y="110" width="180" height="38" rx="6" class="zone"/>
+  <text x="800" y="128" class="lbl">iam-sim (Private)</text>
+  <text x="800" y="142" class="lbl-small">simulated LDAP groups</text>
 
-  <rect x="700" y="155" width="180" height="38" rx="6" class="zone"/>
-  <text x="790" y="173" class="lbl">... other non-live zones</text>
-  <text x="790" y="187" class="lbl-small">(truncated for clarity)</text>
+  <!-- Expand domain-a -->
+  <path d="M 120 148 L 120 170 L 60 170 L 60 200" class="line"/>
+  <path d="M 120 170 L 120 200" class="line"/>
+  <path d="M 120 170 L 180 170 L 180 200" class="line"/>
 
-  <!-- Expand live-production -->
-  <path d="M 120 148 L 120 170 L 80 170 L 80 200" class="line"/>
-  <path d="M 120 170 L 200 170 L 200 200" class="line"/>
+  <rect x="20" y="200" width="80" height="38" rx="6" class="proj"/>
+  <text x="60" y="223" class="lbl">proj-1</text>
 
-  <rect x="10" y="200" width="140" height="44" rx="6" class="domain"/>
-  <text x="80" y="220" class="lbl">domain-a/</text>
-  <text x="80" y="236" class="lbl-small">(domain)</text>
+  <rect x="80" y="200" width="80" height="38" rx="6" class="proj"/>
+  <text x="120" y="223" class="lbl">proj-2</text>
 
-  <rect x="160" y="200" width="140" height="44" rx="6" class="domain"/>
-  <text x="230" y="220" class="lbl">domain-b/</text>
-  <text x="230" y="236" class="lbl-small">(domain)</text>
+  <rect x="140" y="200" width="80" height="38" rx="6" class="proj"/>
+  <text x="180" y="223" class="lbl">proj-3</text>
 
-  <!-- domain-a children -->
-  <path d="M 80 244 L 80 280 L 30 280 L 30 310" class="line"/>
-  <path d="M 80 280 L 120 280 L 120 310" class="line"/>
-  <path d="M 80 280 L 200 280 L 200 310" class="line"/>
+  <!-- restricted under domain-a -->
+  <path d="M 120 238 L 120 270" class="line"/>
+  <rect x="30" y="270" width="180" height="38" rx="6" class="restricted"/>
+  <text x="120" y="290" class="lbl">restricted/ (Private)</text>
+  <text x="120" y="304" class="lbl-small">confidential subgroup</text>
 
-  <rect x="-10" y="310" width="80" height="38" rx="6" class="proj"/>
-  <text x="30" y="333" class="lbl">api</text>
+  <path d="M 120 308 L 120 335" class="line"/>
+  <rect x="40" y="335" width="160" height="38" rx="6" class="proj"/>
+  <text x="120" y="358" class="lbl">restricted-proj-1</text>
 
-  <rect x="80" y="310" width="80" height="38" rx="6" class="proj"/>
-  <text x="120" y="333" class="lbl">ui</text>
+  <!-- Expand domain-b -->
+  <path d="M 350 148 L 350 170 L 290 170 L 290 200" class="line"/>
+  <path d="M 350 170 L 350 200" class="line"/>
+  <path d="M 350 170 L 410 170 L 410 200" class="line"/>
 
-  <rect x="170" y="310" width="80" height="38" rx="6" class="proj"/>
-  <text x="210" y="333" class="lbl">batch</text>
+  <rect x="250" y="200" width="80" height="38" rx="6" class="proj"/>
+  <text x="290" y="223" class="lbl">proj-1</text>
 
-  <!-- restricted -->
-  <path d="M 80 244 L 80 370 L 30 370 L 30 400" class="line"/>
-  <rect x="-10" y="400" width="180" height="44" rx="6" class="restricted"/>
-  <text x="80" y="420" class="lbl">restricted/</text>
-  <text x="80" y="436" class="lbl-small">(confidential)</text>
+  <rect x="310" y="200" width="80" height="38" rx="6" class="proj"/>
+  <text x="350" y="223" class="lbl">proj-2</text>
 
-  <path d="M 80 444 L 80 470 L 80 490" class="line"/>
-  <rect x="20" y="490" width="140" height="38" rx="6" class="proj"/>
-  <text x="90" y="513" class="lbl">restricted-proj-1</text>
+  <rect x="370" y="200" width="80" height="38" rx="6" class="proj"/>
+  <text x="410" y="223" class="lbl">proj-3</text>
 
-  <!-- IAM sim box -->
-  <rect x="560" y="300" width="330" height="170" rx="6" fill="#f4f5f7" stroke="#6b778c" stroke-width="1"/>
-  <text x="725" y="322" class="lbl" style="font-weight:600">IAM Simulation area</text>
-  <text x="725" y="342" class="lbl-small">acme/iam-sim/</text>
-  <text x="725" y="362" class="lbl-small">├── sscam/   (Approach 1 groups)</text>
-  <text x="725" y="378" class="lbl-small">│    ├── domain-a-proj-1_w</text>
-  <text x="725" y="394" class="lbl-small">│    └── domain-a-proj-1_r</text>
-  <text x="725" y="414" class="lbl-small">├── sailpoint/   (Approach 2 groups)</text>
-  <text x="725" y="430" class="lbl-small">│    ├── gl-domain-a-dev</text>
-  <text x="725" y="446" class="lbl-small">│    └── gl-restricted-read</text>
-  <text x="725" y="462" class="lbl-small">└── p2p/   (P2P DevOps groups)</text>
+  <!-- platform child -->
+  <path d="M 580 148 L 580 200" class="line"/>
+  <rect x="500" y="200" width="160" height="38" rx="6" class="proj"/>
+  <text x="580" y="223" class="lbl">ci-templates</text>
+
+  <!-- iam-sim subtree (drawn as text block) -->
+  <rect x="680" y="200" width="220" height="180" rx="6" fill="#f4f5f7" stroke="#6b778c" stroke-width="1"/>
+  <text x="790" y="222" class="lbl" style="font-weight:600">acme-poc/iam-sim/</text>
+  <text x="790" y="244" class="lbl-small">├── sscam/   (Approach 1)</text>
+  <text x="790" y="260" class="lbl-small">│    ├── domain-a-proj-1_w</text>
+  <text x="790" y="276" class="lbl-small">│    └── domain-a-proj-1_r</text>
+  <text x="790" y="298" class="lbl-small">├── sailpoint/   (Approach 2)</text>
+  <text x="790" y="314" class="lbl-small">│    ├── gl-domain-a-{dev,read,…}</text>
+  <text x="790" y="330" class="lbl-small">│    └── gl-restricted-read</text>
+  <text x="790" y="352" class="lbl-small">└── p2p/   (custom roles)</text>
+  <text x="790" y="368" class="lbl-small">     └── IAM_DevOps_domain-a_*</text>
 </svg>
-<div class="caption">Figure 1 — The deployment-model hierarchy constructed for the PoC. Domains live within deployment zones; confidential projects live in zone-scoped <code>restricted/</code> subgroups. The IAM simulation area holds the manually-managed groups representing SSCAM, SailPoint, and P2P LDAP groups.</div>
+<div class="caption">Figure 1 — The flat business-domain hierarchy constructed for the PoC. Business domains, the IAM simulation container, and the platform group sit directly under <code>acme-poc</code>. Confidential projects live under each domain's Private <code>restricted/</code> subgroup.</div>
 </div>
 
-<p>Three deployment zones were fully populated for the PoC: <code>live-production</code>, <code>live-cloud-landing-zone</code>, and <code>non-live-enterprise</code>. The <code>domain-a</code> domain was created under <code>live-production</code> with three projects (<code>api</code>, <code>ui</code>, <code>batch</code>) plus a <code>restricted/</code> subgroup containing <code>restricted-proj-1</code>. This mirrors the example in the design document.</p>
+<p>Two business domains were populated for the PoC: <code>domain-a</code> (used for the Approach 1 hybrid pattern + custom roles) and <code>domain-b</code> (used for the Approach 2 group-centric pattern). <code>domain-a</code> contains <code>proj-1</code>, <code>proj-2</code>, <code>proj-3</code>, plus a Private <code>restricted/</code> subgroup containing <code>restricted-proj-1</code>. <code>domain-b</code> contains the same three project names. This mirrors the "How It Looks in GitLab" section of the design document.</p>
 
 <p>Visibility was set deliberately:</p>
 
 <ul>
   <li>Top-level <code>acme</code> — Internal (enables inner sourcing across the organisation).</li>
-  <li>Each deployment zone — Internal (inherits downward).</li>
+  <li>Each business domain — Internal (inherits downward).</li>
   <li>Each domain — Internal (inner-source by default).</li>
   <li><code>restricted/</code> subgroups — Private (overrides the Internal inheritance so confidential projects are invisible to non-members).</li>
   <li><code>iam-sim/</code> — Private (container for simulated IAM groups, not intended for general visibility).</li>
@@ -357,7 +363,7 @@
 
 <h2>6. Part C — Approach 1 Validation (Hybrid Transition)</h2>
 
-<p>Approach 1 was validated on the <code>domain-a/proj-1</code> project. The validation mirrored the Bitbucket-era access pattern: access granted at the project level via SSCAM <code>_w</code> / <code>_r</code> groups, with a minimal deployment-zone grouping introduced only for visibility and future migration.</p>
+<p>Approach 1 was validated on the <code>domain-a/proj-1</code> project. The validation mirrored the Bitbucket-era access pattern: access granted at the project level via SSCAM <code>_w</code> / <code>_r</code> groups, alongside the minimal domain-level grouping that already exists in the flat hierarchy.</p>
 
 <h3>6.1 Configuration</h3>
 
@@ -368,7 +374,7 @@
   <li><code>domain-a-proj-1_r</code> — membership: Rita</li>
 </ul>
 
-<p>These groups were shared with <code>acme/live-production/domain-a/proj-1</code> at Developer and Reporter respectively. The <code>restricted/</code> subgroup received a sharing of <code>gl-restricted-read</code> at Reporter. The optional product-level <code>gl-domain-a-dev</code> group was also shared at the <code>domain-a/</code> domain at Developer to represent the hybrid pattern in which some product-level grouping exists alongside project-level groups.</p>
+<p>These groups were shared with <code>acme/domain-a/proj-1</code> at Developer and Reporter respectively. The <code>restricted/</code> subgroup received a sharing of <code>gl-restricted-read</code> at Reporter. The optional product-level <code>gl-domain-a-dev</code> group was also shared at the <code>domain-a/</code> domain at Developer to represent the hybrid pattern in which some product-level grouping exists alongside project-level groups.</p>
 
 <div class="diagram">
 <svg viewBox="0 0 820 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Approach 1 configuration">
@@ -389,12 +395,12 @@
   </defs>
 
   <rect x="40" y="30" width="200" height="34" rx="5" class="zone"/>
-  <text x="140" y="51" class="lbl">live-production</text>
+  <text x="140" y="51" class="lbl">acme-poc (top group)</text>
 
   <path d="M 140 64 L 140 80 L 140 100" class="line"/>
 
   <rect x="60" y="100" width="180" height="34" rx="5" class="domain"/>
-  <text x="150" y="121" class="lbl">domain-a/ (domain)</text>
+  <text x="150" y="121" class="lbl">domain-a/ (business domain)</text>
 
   <path d="M 150 134 L 150 160 L 80 160 L 80 180" class="line"/>
   <path d="M 150 160 L 150 180" class="line"/>
@@ -450,21 +456,21 @@
 </ul>
 
 <div class="outcome">
-<strong>Outcome:</strong> Approach 1 preserved the Bitbucket-era per-project access pattern while introducing the deployment-zone grouping in a non-disruptive way. Inner sourcing worked for non-restricted projects, and confidential projects were correctly isolated. The hybrid pattern is viable as a transition model as the design specifies.
+<strong>Outcome:</strong> Approach 1 preserved the Bitbucket-era per-project access pattern within the flat domain hierarchy. Inner sourcing worked for non-restricted projects, and confidential projects were correctly isolated. The hybrid pattern is viable as a transition model as the design specifies.
 </div>
 
 <hr>
 
 <h2>7. Part D — Approach 2 Validation (Target Group-Centric)</h2>
 
-<p>Approach 2 was validated on a parallel structure using a second domain <code>domain-b/</code> created under <code>live-production</code>. No project-level SSCAM groups were introduced. All access was granted at the domain level via SailPoint-style groups.</p>
+<p>Approach 2 was validated on a parallel structure using a second business domain <code>domain-b/</code>, sibling to <code>domain-a</code> directly under the top group. No project-level SSCAM groups were introduced. All access was granted at the domain level via SailPoint-style groups.</p>
 
 <h3>7.1 Configuration</h3>
 
 <p>Four IAM groups under <code>acme/iam-sim/sailpoint/</code>:</p>
 
 <ul>
-  <li><code>gl-domain-b-read</code> → shared with <code>acme/live-production/domain-b/</code> at Reporter</li>
+  <li><code>gl-domain-b-read</code> → shared with <code>acme/domain-b/</code> at Reporter</li>
   <li><code>gl-domain-b-dev</code> → shared at Developer</li>
   <li><code>gl-domain-b-maint</code> → shared at Maintainer</li>
   <li><code>gl-domain-b-owner</code> → shared at Owner</li>
@@ -694,34 +700,32 @@
 
 <hr>
 
-<h2>11. Part H — Policy Inheritance at the Deployment-Zone Level</h2>
+<h2>11. Part H — Policy Inheritance and Deployment-Model Isolation</h2>
 
-<p>This part validates the design's most distinctive principle: that policy (branch protection, approval requirements, CI/CD variables, runner scoping) can be enforced <em>once per deployment zone</em> and inherited to all projects beneath.</p>
+<p>This part validates that policy (CI/CD variables, runner scoping, protected environments) can be enforced <em>once at the domain group</em> and inherited to all projects beneath, while still expressing deployment-model isolation (live-prod vs non-live) <em>without</em> requiring deployment-zone groups in the hierarchy.</p>
 
-<h3>11.1 Zone-Level Configuration</h3>
+<h3>11.1 Domain-Level Configuration</h3>
 
-<p>At <code>acme/live-production/</code>, the following were configured:</p>
+<p>At <code>acme-poc/domain-a/</code>, the following were configured:</p>
 
 <ul>
-  <li>A group-level protected CI/CD variable <code>PROD_DEPLOY_TOKEN</code>, marked Protect and Mask, with environment scope <code>prod</code>.</li>
-  <li>A group-level runner tagged <code>live-prod-runner</code>, with the Protected flag enabled.</li>
-  <li>A default branch protection convention documented for all child projects: main requires Maintainer to merge, 2 approvals required, code owner approval required.</li>
-  <li>A shared CI template project at <code>acme/platform/ci-templates</code> with a <code>live-production.yml</code> template that consumers include.</li>
+  <li>A group-level protected CI/CD variable <code>PROD_DEPLOY_TOKEN</code>, marked Protect and Mask, with <strong>environment scope <code>prod</code></strong>. The environment scope is the knob that turns "live-prod isolation" into a runtime property of the variable, not a property of the group hierarchy.</li>
+  <li>A group-level runner tagged <code>prod-runner</code>, with the Protected flag enabled — only picks up jobs from protected refs (<code>main</code> + tags), so feature-branch pipelines never use the prod runner.</li>
+  <li>A default branch protection convention documented for all child projects: main requires Maintainer to merge, code owner approval required.</li>
+  <li>A shared CI template project at <code>acme-poc/platform/ci-templates</code>.</li>
 </ul>
-
-<p>At <code>acme/non-live-enterprise/</code>, a deliberately looser configuration was applied: 1 approval required, no required code owner approval, no protected prod variables, shared runners permitted.</p>
 
 <h3>11.2 Validation</h3>
 
 <ul>
-  <li>A pipeline in <code>domain-a/proj-1</code> (under <code>live-production</code>) successfully inherited <code>PROD_DEPLOY_TOKEN</code> when the job declared <code>environment: prod</code>. The same variable was invisible to jobs in <code>domain-b/proj-1</code>'s non-live counterpart, confirming isolation.</li>
-  <li>The <code>live-prod-runner</code> picked up jobs from <code>domain-a/proj-1</code>, <code>domain-a/proj-2</code>, and <code>domain-b/proj-1</code> (all under <code>live-production</code>), but refused jobs from projects in <code>non-live-enterprise</code>.</li>
-  <li>Adding a new project <code>domain-a/reporting</code> under <code>live-production/domain-a/</code> — it immediately had access to the group variable and runner without any project-level configuration, confirming the "enforce once, inherit everywhere" property.</li>
+  <li>A pipeline in <code>domain-a/proj-1</code> successfully inherited <code>PROD_DEPLOY_TOKEN</code> when the job declared <code>environment: prod</code>. The same variable was <strong>invisible to feature-branch jobs and to any job without <code>environment: prod</code></strong>, even on <code>main</code> — proving that the isolation knob is the environment scope, not the ref or the group path.</li>
+  <li>The <code>prod-runner</code> picked up jobs running on protected refs but refused jobs from feature branches — demonstrating runner-level "live vs non-live" isolation independent of group nesting.</li>
+  <li>Adding a new project <code>domain-a/proj-3</code> — it immediately had access to the group variable and runner without any project-level configuration, confirming the "enforce once, inherit everywhere" property.</li>
   <li>A deliberate attempt to override <code>PROD_DEPLOY_TOKEN</code> at the project level was allowed (GitLab permits project-level override of group variables), but surfaces a warning in the Members and CI/CD audit views.</li>
 </ul>
 
 <div class="outcome">
-<strong>Outcome:</strong> Policy inheritance at the deployment-zone level worked as the design requires. New projects inherit the zone's security, CI, and runner posture automatically. This is the core scalability benefit that the design's grouping criterion (by deployment model, not team) unlocks.
+<strong>Outcome:</strong> Policy inheritance at the domain-group level worked as the design requires. Deployment-model isolation (live-prod vs non-live) is expressed through environment scopes + protected refs + runner tags, not through extra group nesting. New projects inherit the domain's security, CI, and runner posture automatically. This is the core scalability benefit that the design's grouping criterion unlocks — without forcing each app to be duplicated under every deployment-zone subgroup.
 </div>
 
 <hr>
@@ -739,7 +743,7 @@
 <tr><td>B — Manual job authorization</td><td>Operator-restricted manual deploy job to <code>prod</code> environment</td><td>Pass — only Operator-listed users could play; Developers could not. Without environment declaration, any Developer could play.</td></tr>
 <tr><td>C — Fork pipeline isolation</td><td>Dan's fork MR attempted to read <code>PROD_DEPLOY_TOKEN</code></td><td>Pass — even with approval to run, protected variables were blank in fork pipelines</td></tr>
 <tr><td>D — CI_JOB_TOKEN scoping</td><td>Cross-project authentication from <code>domain-b/proj-1</code> to <code>domain-a/proj-1</code></td><td>Pass — default-deny; allowlist addition enabled explicit cross-project access</td></tr>
-<tr><td>E — Runner scoping</td><td>Zone-scoped runner <code>live-prod-runner</code> against sibling-zone projects</td><td>Pass — runner picked up only live-production jobs; non-live jobs remained pending</td></tr>
+<tr><td>E — Runner scoping</td><td>Group-scoped, Protected-flag runner <code>prod-runner</code> against feature-branch and sibling-domain jobs</td><td>Pass — runner picked up only protected-ref jobs from <code>domain-a</code>; feature-branch and sibling-domain jobs remained pending</td></tr>
 <tr><td>F — CI/CD settings access</td><td>Alice (Developer) vs Bob (Maintainer) accessing variables, protected branches, runners</td><td>Pass — Developer blocked; Maintainer allowed</td></tr>
 <tr><td>G — Scheduled pipeline ownership</td><td>Schedule ownership transfer; owner role demotion effect</td><td>Pass — schedule runs as owner; demoting the owner caused privileged scheduled jobs to fail at runtime; transferring ownership to a long-lived account resolved this</td></tr>
 <tr><td>H — Variable inheritance and override</td><td>Group vs project variables; sibling isolation</td><td>Pass — group variables inherited, project variables overrode at project scope, sibling group variables not visible</td></tr>
@@ -825,9 +829,9 @@
 
 <p>This PoC did not validate SAML Group Sync, SailPoint, or SSCAM integration. The role and policy logic is confirmed to work; the IAM binding layer remains untested on real infrastructure. A second-phase PoC is required before production rollout.</p>
 
-<h4>14.7 Reporting by deployment zone is enabled by the hierarchy</h4>
+<h4>14.7 Reporting by deployment zone uses environment + label, not group hierarchy</h4>
 
-<p>Because all projects live under a deployment-zone subgroup, native GitLab reports (e.g., "all projects in live-production") work without any tagging or custom classification. This is a direct benefit of the design's grouping criterion and should be leveraged for compliance reporting.</p>
+<p>Because deployment-model isolation is expressed via environment scopes + runner tags rather than group nesting, "all production deployments" is queried via the GitLab Deployments API filtered by <code>environment=prod</code>, not by group path. The benefit is one app = one place in the tree; the trade-off is that compliance reporting joins on environment metadata rather than reading the group hierarchy. For the PoC's compliance scope this is straightforward; for production rollout we recommend a small dashboard over the Deployments API.</p>
 
 <hr>
 
@@ -842,7 +846,7 @@
 <ol>
   <li><strong>LDAP Integration PoC (Phase 2).</strong> Execute a focused follow-up PoC covering SAML Group Sync against SailPoint and SSCAM on the same hierarchy. Validate sync latency, deprovisioning, and lifecycle events with representative user populations.</li>
   <li><strong>Onboarding templates.</strong> Produce reusable templates for new project onboarding under each approach, including the layered Operator configuration and the Private <code>restricted/</code> subgroup pattern.</li>
-  <li><strong>Zone-level policy baselines.</strong> Document the standard protected branch rules, required approvals, and CI/CD variable conventions for each deployment zone. These baselines should be applied at group creation time, not per project.</li>
+  <li><strong>Domain-level policy baselines + environment-scoped variables.</strong> Document the standard protected branch rules, required approvals, and CI/CD variable conventions for each business domain. Express the live-prod/non-live distinction through environment names on protected environments + the <code>environment_scope</code> on each variable — not through extra group nesting.</li>
   <li><strong>Migration playbook.</strong> Codify the Approach 1 → Approach 2 migration sequence (validated in Part E) into a reusable playbook for the broader application estate.</li>
   <li><strong>Audit automation.</strong> Schedule periodic checks for the gaps identified in Observations 14.3 (project-level variable overrides) and 14.5 (scheduled pipeline ownership). These are operational risks that must be monitored rather than prevented.</li>
   <li><strong>Compliance framework PoC.</strong> In parallel, validate mandatory CI job injection (SAST, secret detection, dependency scanning) on top of the validated access model to close the full control surface.</li>
