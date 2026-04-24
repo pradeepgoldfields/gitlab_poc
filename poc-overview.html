@@ -293,10 +293,10 @@
 </p>
 
 <pre><code>acme-poc/                              ← top-level group (Internal)
-├── domain-a/                          ← REAL side — business domain
+├── business-unit-a/domain-a/                          ← REAL side — business domain
 │   ├── proj-1, proj-2, proj-3
 │   └── restricted/restricted-proj-1   ← Private subgroup
-├── domain-b/                          ← REAL side — sibling domain
+├── business-unit-a/domain-b/                          ← REAL side — sibling domain
 │   └── proj-1, proj-2, proj-3
 ├── platform/ci-templates              ← REAL side — shared CI
 │
@@ -374,9 +374,9 @@
 
 <p>Approach 1 (Hybrid) shares for the PoC:</p>
 
-<pre><code>domain-a-proj-1_w   --share as Developer  --&gt;  domain-a/proj-1
+<pre><code>domain-a-proj-1_w   --share as Developer  --&gt;  business-unit-a/domain-a/proj-1
 gl-domain-a-dev     --share as Developer  --&gt;  domain-a (inherited to all children)
-gl-restricted-read  --share as Reporter   --&gt;  domain-a/restricted</code></pre>
+gl-restricted-read  --share as Reporter   --&gt;  business-unit-a/domain-a/restricted</code></pre>
 
 <p>Approach 2 (Target — pure group-level) shares:</p>
 
@@ -398,7 +398,7 @@ gl-domain-b-owner   --share as Owner      --&gt;  domain-b</code></pre>
 <p>
   Phase 1 creates the three custom roles at the instance level. Phase 9
   then shares the <code>iam-sim/devops-tooling/IAM_DevOps_domain-a_&lt;Role&gt;</code>
-  subgroups with <code>domain-a/proj-1</code>, passing the
+  subgroups with <code>business-unit-a/domain-a/proj-1</code>, passing the
   <code>member_role_id</code> parameter on the share call. That single
   call binds the IAM-sim roster to a project and stamps everyone in it
   with the custom role.
@@ -965,8 +965,8 @@ gl-domain-b-owner   --share as Owner      --&gt;  domain-b</code></pre>
     <img src="gitlab-poc-scripts/ui_tests/screenshots/01-hierarchy-top__02__top-group-tree-flat-domains.png" alt="Top group tree (flat domains)"></a>
   <div class="shot-caption">The flat top-group tree — business domains, platform, and iam-sim are peers.</div>
   <a href="gitlab-poc-scripts/ui_tests/screenshots/01-hierarchy-top__03__pilot-project-domain-aproj-1.png" target="_blank">
-    <img src="gitlab-poc-scripts/ui_tests/screenshots/01-hierarchy-top__03__pilot-project-domain-aproj-1.png" alt="Pilot project domain-a/proj-1"></a>
-  <div class="shot-caption">The pilot project <code>domain-a/proj-1</code> as it appears after Phase 2.</div>
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/01-hierarchy-top__03__pilot-project-domain-aproj-1.png" alt="Pilot project business-unit-a/domain-a/proj-1"></a>
+  <div class="shot-caption">The pilot project <code>business-unit-a/domain-a/proj-1</code> as it appears after Phase 2.</div>
 </div>
 
 <!-- ===== SCENARIO 2 ===== -->
@@ -989,8 +989,8 @@ gl-domain-b-owner   --share as Owner      --&gt;  domain-b</code></pre>
     <img src="gitlab-poc-scripts/ui_tests/screenshots/02-user-membership__01__top-level-acme-members-dan-as-guest.png" alt="Top-level acme members"></a>
   <div class="shot-caption">Top-level <code>acme-poc</code> members. Dan appears with Minimal Access — the inner-source contributor pattern.</div>
   <a href="gitlab-poc-scripts/ui_tests/screenshots/02-user-membership__03__domain-aproj-1-members-direct--inherited.png" target="_blank">
-    <img src="gitlab-poc-scripts/ui_tests/screenshots/02-user-membership__03__domain-aproj-1-members-direct--inherited.png" alt="domain-a/proj-1 members"></a>
-  <div class="shot-caption">Members of <code>domain-a/proj-1</code> showing the direct + inherited mix.</div>
+    <img src="gitlab-poc-scripts/ui_tests/screenshots/02-user-membership__03__domain-aproj-1-members-direct--inherited.png" alt="business-unit-a/domain-a/proj-1 members"></a>
+  <div class="shot-caption">Members of <code>business-unit-a/domain-a/proj-1</code> showing the direct + inherited mix.</div>
 </div>
 
 <!-- ===== SCENARIO 3 ===== -->
@@ -1006,12 +1006,12 @@ gl-domain-b-owner   --share as Owner      --&gt;  domain-b</code></pre>
     see and use the project but cannot delete it or edit settings, the role
     layering above (custom roles, protections) is meaningful.</div>
   <div class="what"><strong>What's tested:</strong> Alice navigates to
-    <code>domain-a/proj-1</code>; the Settings menu is hidden, the Delete
+    <code>business-unit-a/domain-a/proj-1</code>; the Settings menu is hidden, the Delete
     button is absent. She also sees <code>ci-templates</code> as a readable
     Internal project (inner sourcing) without the ability to push.</div>
   <a href="gitlab-poc-scripts/ui_tests/screenshots/03-baseline-access__01__domain-aproj-1-project-as-alice-developer.png" target="_blank">
     <img src="gitlab-poc-scripts/ui_tests/screenshots/03-baseline-access__01__domain-aproj-1-project-as-alice-developer.png" alt="proj-1 as Alice"></a>
-  <div class="shot-caption">Alice's view of <code>domain-a/proj-1</code> — Code/CI sidebar visible, no Settings access.</div>
+  <div class="shot-caption">Alice's view of <code>business-unit-a/domain-a/proj-1</code> — Code/CI sidebar visible, no Settings access.</div>
 </div>
 
 <!-- ===== SCENARIO 4 ===== -->
@@ -1097,7 +1097,7 @@ gl-domain-b-owner   --share as Owner      --&gt;  domain-b</code></pre>
     contributor.</div>
   <div class="what"><strong>What's tested:</strong> Dan (Minimal Access at
     top group, no project role) browses the Explore page and sees Internal
-    projects; opens <code>domain-a/proj-1</code> and can read but cannot
+    projects; opens <code>business-unit-a/domain-a/proj-1</code> and can read but cannot
     push; forks it into his personal namespace; the upstream MR list shows
     his fork-sourced contribution.</div>
   <a href="gitlab-poc-scripts/ui_tests/screenshots/07-inner-source__01__explore-projects-as-dan-internal-projects-visible.png" target="_blank">
@@ -1121,13 +1121,13 @@ gl-domain-b-owner   --share as Owner      --&gt;  domain-b</code></pre>
     role granted at the domain level doesn't actually flow down to every
     project beneath, the whole Approach 2 model collapses.</div>
   <div class="what"><strong>What's tested:</strong> Members on a project
-    that has no direct shares (<code>domain-a/proj-2</code>) — every entry
+    that has no direct shares (<code>business-unit-a/domain-a/proj-2</code>) — every entry
     is "inherited from..."; members on the pilot project where roles were
     raised — both inherited and direct entries visible; tree view of the
     flat top group showing both domains as peers.</div>
   <a href="gitlab-poc-scripts/ui_tests/screenshots/08-inheritance__01__domain-aproj-2-members-inherited-from-payments.png" target="_blank">
     <img src="gitlab-poc-scripts/ui_tests/screenshots/08-inheritance__01__domain-aproj-2-members-inherited-from-payments.png" alt="proj-2 members inherited"></a>
-  <div class="shot-caption"><code>domain-a/proj-2</code> members — every entry is inherited; the project has no direct member configuration.</div>
+  <div class="shot-caption"><code>business-unit-a/domain-a/proj-2</code> members — every entry is inherited; the project has no direct member configuration.</div>
 </div>
 
 <!-- ===== SCENARIO 8b ===== -->
@@ -1144,7 +1144,7 @@ gl-domain-b-owner   --share as Owner      --&gt;  domain-b</code></pre>
     The <code>restricted/</code> Private subgroup pattern delivers this.</div>
   <div class="what"><strong>What's tested:</strong> Alice (full Developer
     on <code>domain-a</code>) navigates directly to
-    <code>domain-a/restricted/restricted-proj-1</code>. Returns 404 — GitLab
+    <code>business-unit-a/domain-a/restricted/restricted-proj-1</code>. Returns 404 — GitLab
     deliberately returns 404 not 403 so existence isn't leaked.</div>
   <div class="expected"><strong>Expected:</strong> HTTP 404. Anything else
     is a control failure.</div>
@@ -1236,7 +1236,7 @@ gl-domain-b-owner   --share as Owner      --&gt;  domain-b</code></pre>
     cannot reach the upstream's settings — even when looking by direct URL.</div>
   <a href="gitlab-poc-scripts/ui_tests/screenshots/10c2-fork-as-dan__01__upstream-domain-aproj-1-cicd-settings-as-dan-should-be-denie.png" target="_blank">
     <img src="gitlab-poc-scripts/ui_tests/screenshots/10c2-fork-as-dan__01__upstream-domain-aproj-1-cicd-settings-as-dan-should-be-denie.png" alt="Dan denied"></a>
-  <div class="shot-caption">404 page for Dan attempting <code>domain-a/proj-1/-/settings/ci_cd</code>.</div>
+  <div class="shot-caption">404 page for Dan attempting <code>business-unit-a/domain-a/proj-1/-/settings/ci_cd</code>.</div>
 </div>
 
 <!-- ===== SCENARIO 10d ===== -->
@@ -1253,7 +1253,7 @@ gl-domain-b-owner   --share as Owner      --&gt;  domain-b</code></pre>
     job-token allowlist is default-deny and must be explicitly opened up.</div>
   <a href="gitlab-poc-scripts/ui_tests/screenshots/10d-job-token__01__job-token-allowlist-on-domain-aproj-1-target-of-inbound-call.png" target="_blank">
     <img src="gitlab-poc-scripts/ui_tests/screenshots/10d-job-token__01__job-token-allowlist-on-domain-aproj-1-target-of-inbound-call.png" alt="Job token allowlist"></a>
-  <div class="shot-caption">Inbound job-token allowlist on <code>domain-a/proj-1</code> — explicit + minimal.</div>
+  <div class="shot-caption">Inbound job-token allowlist on <code>business-unit-a/domain-a/proj-1</code> — explicit + minimal.</div>
 </div>
 
 <!-- ===== SCENARIO 10e ===== -->
@@ -1359,7 +1359,7 @@ gl-domain-b-owner   --share as Owner      --&gt;  domain-b</code></pre>
     deploy keys, API endpoints, etc.).</div>
   <a href="gitlab-poc-scripts/ui_tests/screenshots/10i-env-scoped-vars__01__domain-aproj-1-cicd-variables-env-scoped-entries.png" target="_blank">
     <img src="gitlab-poc-scripts/ui_tests/screenshots/10i-env-scoped-vars__01__domain-aproj-1-cicd-variables-env-scoped-entries.png" alt="Env-scoped variables"></a>
-  <div class="shot-caption">CI/CD variables on <code>domain-a/proj-1</code> showing per-environment scopes.</div>
+  <div class="shot-caption">CI/CD variables on <code>business-unit-a/domain-a/proj-1</code> showing per-environment scopes.</div>
 </div>
 
 

@@ -22,7 +22,7 @@ def main():
     gl = GitLabClient()
 
     # Commit baseline .gitlab-ci.yml to domain-a/proj-1 and CODEOWNERS
-    api_path = f"{config.TOP_GROUP}/domain-a/proj-1"
+    api_path = f"{config.TOP_GROUP}/business-unit-a/domain-a/proj-1"
     step(f"Committing baseline .gitlab-ci.yml and CODEOWNERS to {api_path}")
     try:
         gl.upsert_file(api_path, "main", ".gitlab-ci.yml", config.SAMPLE_CI_YAML,

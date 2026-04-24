@@ -130,7 +130,7 @@
   <rect x="580" y="40" width="340" height="350" rx="8" fill="#f5fff9" stroke="#00875a" stroke-width="1"/>
 
   <rect x="600" y="60" width="300" height="36" rx="5" class="gl"/>
-  <text x="750" y="82" class="lbl">acme/domain-a/</text>
+  <text x="750" y="82" class="lbl">acme/business-unit-a/domain-a/</text>
 
   <rect x="620" y="110" width="260" height="30" rx="4" class="gl"/>
   <text x="750" y="130" class="lbl-small">api (project)</text>
@@ -161,7 +161,7 @@
 <table>
 <thead><tr><th>Bitbucket</th><th>GitLab</th><th>Notes / risk</th></tr></thead>
 <tbody>
-<tr><td>Project (e.g. <code>PAY</code>)</td><td>Group / subgroup (e.g. <code>domain-a/</code>)</td><td>Direct mapping. In GitLab the group hierarchy is deeper — the deployment-zone layer is added above the domain.</td></tr>
+<tr><td>Project (e.g. <code>PAY</code>)</td><td>Group / subgroup (e.g. <code>business-unit-a/domain-a/</code>)</td><td>Direct mapping. In GitLab the group hierarchy is deeper — the deployment-zone layer is added above the domain.</td></tr>
 <tr><td>Repository</td><td>Project</td><td>Direct 1:1.</td></tr>
 <tr><td>Branch permissions</td><td>Protected branches</td><td>Rules structure differs. Bitbucket "prevent rewriting" maps to GitLab "disallow force push".</td></tr>
 <tr><td>Default reviewers</td><td>CODEOWNERS + approval rules</td><td>Requires rewrite. A <code>CODEOWNERS</code> file lives in the repo; approval rules are project settings.</td></tr>
@@ -309,7 +309,7 @@
 <pre><code># Per-repo migration script (sketch)
 git clone --mirror https://bitbucket.example.com/scm/PAY/domain-a-api.git
 cd domain-a-api.git
-git remote set-url --push origin https://gitlab.example.com/acme/domain-a/proj-1.git
+git remote set-url --push origin https://gitlab.example.com/acme/business-unit-a/domain-a/proj-1.git
 git push --mirror
 # Then verify: branch + tag counts, LFS object counts, sample-clone checks
 </code></pre>
@@ -368,7 +368,7 @@ git push --mirror
   <!-- Step 2 — Approach 1 -->
   <rect x="265" y="60" width="220" height="280" rx="6" class="state-mid"/>
   <text x="375" y="50" class="hdr">Step 2 — Approach 1 in GitLab</text>
-  <text x="375" y="90" class="lbl">domain-a/proj-1 project</text>
+  <text x="375" y="90" class="lbl">business-unit-a/domain-a/proj-1 project</text>
   <text x="375" y="120" class="lbl-small">SAME LDAP groups shared:</text>
   <text x="375" y="140" class="lbl-small">domain-a-proj-1_w → Developer</text>
   <text x="375" y="158" class="lbl-small">domain-a-proj-1_r → Reporter</text>
@@ -385,7 +385,7 @@ git push --mirror
   <!-- Step 3 — Parallel -->
   <rect x="520" y="60" width="220" height="280" rx="6" class="state-mid"/>
   <text x="630" y="50" class="hdr">Step 3 — Dual running</text>
-  <text x="630" y="90" class="lbl">domain-a/proj-1 project</text>
+  <text x="630" y="90" class="lbl">business-unit-a/domain-a/proj-1 project</text>
   <text x="630" y="120" class="lbl-small">Old (retained):</text>
   <text x="630" y="140" class="lbl-small">domain-a-proj-1_w → Dev</text>
   <text x="630" y="158" class="lbl-small">domain-a-proj-1_r → Rep</text>
@@ -402,7 +402,7 @@ git push --mirror
   <!-- Step 4 — Approach 2 -->
   <rect x="775" y="60" width="130" height="280" rx="6" class="state-end"/>
   <text x="840" y="50" class="hdr">Step 4 — Approach 2</text>
-  <text x="840" y="95" class="lbl-small">domain-a/proj-1</text>
+  <text x="840" y="95" class="lbl-small">business-unit-a/domain-a/proj-1</text>
   <text x="840" y="125" class="lbl-small">Project-level</text>
   <text x="840" y="143" class="lbl-small">members: NONE</text>
   <text x="840" y="173" class="lbl-small">Inherited from</text>

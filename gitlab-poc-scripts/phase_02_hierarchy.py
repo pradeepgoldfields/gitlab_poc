@@ -2,10 +2,11 @@
 """
 Phase 2 — Hierarchy Skeleton
 
-Creates the FLAT business-domain hierarchy (analysis-aligned):
+Creates the analysis-aligned hierarchy:
   acme-poc/
-    domain-a/{proj-1,proj-2,proj-3} + restricted/restricted-proj-1
-    domain-b/{proj-1,proj-2,proj-3}
+    business-unit-a/
+      domain-a/{proj-1,proj-2,proj-3} + restricted/restricted-proj-1
+      domain-b/{proj-1,proj-2,proj-3}
     iam-sim/     (Private — simulated LDAP groups)
     platform/ci-templates
 
@@ -46,7 +47,13 @@ def main():
     gl.ensure_group(plat_path, visibility="internal")
     done(plat_path)
 
-    # Business domains — flat under top group
+    # Business-unit subgroup (single-BU PoC; multi-BU = repeat this loop).
+    bu_path = f"{config.TOP_GROUP}/{config.BUSINESS_UNIT_GROUP}"
+    step(f"Ensuring business-unit subgroup: {bu_path}")
+    gl.ensure_group(bu_path, visibility="internal")
+    done(bu_path)
+
+    # Business domains — sit under business-unit-a/
     for domain in config.DOMAINS:
         path = f"{config.TOP_GROUP}/{domain}"
         step(f"Ensuring domain: {path}")

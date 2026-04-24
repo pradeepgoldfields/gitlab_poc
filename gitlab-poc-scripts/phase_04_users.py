@@ -6,6 +6,8 @@ Phase 4 — Test Users and IAM Group Membership
    to be pre-provisioned).
 2. Adds users to the simulated IAM groups per IAM_MEMBERSHIPS.
 3. Adds Dan to the top-level group with Minimal Access.
+4. Shares the IAM_DevOps_Owner group with the top group as Owner
+   (TOP_LEVEL_SHARES) so the design's Owner mapping is fully wired.
 
 Usage: python3 phase_04_users.py
 """
@@ -80,6 +82,23 @@ def main():
                 done(f"Added {username} → {config.TOP_GROUP} (Minimal Access)")
         except Exception as e:
             fail(f"Failed to add {username}: {e}")
+
+    # 4. Top-level group shares (e.g. IAM_DevOps_Owner → Owner on top group).
+    if getattr(config, "TOP_LEVEL_SHARES", None):
+        step("Applying top-level group shares (design's TOBE Owner mapping)…")
+        for share in config.TOP_LEVEL_SHARES:
+            shared = f"{config.TOP_GROUP}/{share['shared_group']}"
+            role = share["role"]
+            access_level = config.ROLE[role]
+            try:
+                result = gl.share_group_with_group(
+                    config.TOP_GROUP, shared, access_level)
+                if result is None:
+                    warn(f"{shared} already shared with {config.TOP_GROUP}")
+                else:
+                    done(f"Shared {shared} → {config.TOP_GROUP} as {role}")
+            except Exception as e:
+                fail(f"Failed to share {shared}: {e}")
 
     banner("PHASE 4 COMPLETE", char="-")
     done("All test users are in their simulated IAM groups.")

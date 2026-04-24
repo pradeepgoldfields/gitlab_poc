@@ -25,11 +25,11 @@ rename here propagates automatically:
 from __future__ import annotations
 
 # Convenience templates — define once, reuse across scenarios.
-PAYMENTS = "{top}/domain-a"
+PAYMENTS = "{top}/business-unit-a/domain-a"
 PAY_API = f"{PAYMENTS}/proj-1"
 PAY_UI = f"{PAYMENTS}/proj-2"
 PAY_RESTRICTED = f"{PAYMENTS}/restricted/restricted-proj-1"
-SIBLING = "{top}/domain-b"   # sibling domain
+SIBLING = "{top}/business-unit-a/domain-b"   # sibling domain
 SIBLING_PROJ = f"{SIBLING}/proj-1"
 CI_TEMPLATES = "{top}/platform/ci-templates"
 DAN_FORK = "poc-dan/proj-1"                  # fork lands in personal namespace

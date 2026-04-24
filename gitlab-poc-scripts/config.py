@@ -91,21 +91,28 @@ IAM_SIM_GROUP = "iam-sim"
 # Platform group (shared CI templates, runners, etc.)
 PLATFORM_GROUP = "platform"
 
+# Business-unit subgroup that holds the application domains. The design's
+# Approach 1 visual shows an optional `business-unit-N/` layer between the
+# top group and the application domains; for a single-BU org this is
+# basically a one-element wrapper. We model it explicitly so the
+# multi-BU expansion is a simple matter of adding more BU subgroups.
+BUSINESS_UNIT_GROUP = "business-unit-a"
+
 # ---------------------------------------------------------------------------
 # Business domains (long-lived application groupings).
 # ---------------------------------------------------------------------------
-# Each domain sits directly under acme-poc. Confidential apps live in a
+# Each domain sits under business-unit-a/. Confidential apps live in a
 # Private `restricted/` subgroup so they don't inherit inner-source
 # visibility from the parent.
-DOMAINS = ["domain-a", "domain-b"]
+DOMAINS = ["business-unit-a/domain-a", "business-unit-a/domain-b"]
 
 # Projects per domain. Confidential projects go into the `restricted/`
 # Private subgroup which only specific reader groups can see.
 PROJECTS = {
-    "domain-a":            ["proj-1", "proj-2", "proj-3"],
-    "domain-a/restricted": ["restricted-proj-1"],
-    "domain-b":            ["proj-1", "proj-2", "proj-3"],
-    "platform":            ["ci-templates"],
+    "business-unit-a/domain-a":            ["proj-1", "proj-2", "proj-3"],
+    "business-unit-a/domain-a/restricted": ["restricted-proj-1"],
+    "business-unit-a/domain-b":            ["proj-1", "proj-2", "proj-3"],
+    "platform":                            ["ci-templates"],
 }
 
 # ---------------------------------------------------------------------------
@@ -213,10 +220,23 @@ IAM_MEMBERSHIPS = {
     "iam-sim/devops-tooling/IAM_DevOps_domain-a_Maintainer":      [_U["bob"]],
     "iam-sim/devops-tooling/IAM_DevOps_domain-a_Developer":       [_U["alice"]],
     "iam-sim/devops-tooling/IAM_DevOps_domain-a_Reporter":        [_U["rita"]],
+
+    # The instance-wide Owner roster (per the design's TOBE mapping).
+    # Bob is the platform admin who holds top-group Owner via this group,
+    # mirroring how IAM_DevOps_Owner would be wired in production.
+    "iam-sim/devops-tooling/IAM_DevOps_Owner":                    [_U["bob"]],
 }
 
 # Users granted Minimal Access at the top-level group
 TOP_LEVEL_MINIMAL_ACCESS_USERS = [_U["dan"]]
+
+# Group shares applied at the TOP-LEVEL group itself.
+# IAM_DevOps_Owner is the design's TOBE Owner roster — sharing it with the
+# top group at Owner level wires the "Owner = Top Level Group" row of the
+# role table. Members of this group hold Owner across the entire tree.
+TOP_LEVEL_SHARES = [
+    {"shared_group": "iam-sim/devops-tooling/IAM_DevOps_Owner", "role": "owner"},
+]
 
 # ---------------------------------------------------------------------------
 # GitLab role IDs (built-in)
@@ -289,30 +309,30 @@ CUSTOM_ROLES = [
 APPROACH_1_SHARES = [
     # Share SSCAM project-level groups with domain-a/proj-1
     {
-        "target": "domain-a/proj-1",
+        "target": "business-unit-a/domain-a/proj-1",
         "shared_group": "iam-sim/sscam/domain-a-proj-1_w",
         "role": "developer",
     },
     {
-        "target": "domain-a/proj-1",
+        "target": "business-unit-a/domain-a/proj-1",
         "shared_group": "iam-sim/sscam/domain-a-proj-1_r",
         "role": "reporter",
     },
     # Optional product-level share
     {
-        "target": "domain-a",
+        "target": "business-unit-a/domain-a",
         "shared_group": "iam-sim/sailpoint/gl-domain-a-dev",
         "role": "developer",
     },
     # Restricted reader
     {
-        "target": "domain-a/restricted",
+        "target": "business-unit-a/domain-a/restricted",
         "shared_group": "iam-sim/sailpoint/gl-restricted-read",
         "role": "reporter",
     },
     # Maintainer group on domain-a domain
     {
-        "target": "domain-a",
+        "target": "business-unit-a/domain-a",
         "shared_group": "iam-sim/devops-tooling/IAM_DevOps_domain-a_Maintainer",
         "role": "maintainer",
     },
@@ -322,10 +342,10 @@ APPROACH_1_SHARES = [
 # Approach 2 (Target) — sharing plan
 # ---------------------------------------------------------------------------
 APPROACH_2_SHARES = [
-    {"target": "domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-read",  "role": "reporter"},
-    {"target": "domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-dev",   "role": "developer"},
-    {"target": "domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-maint", "role": "maintainer"},
-    {"target": "domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-owner", "role": "owner"},
+    {"target": "business-unit-a/domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-read",  "role": "reporter"},
+    {"target": "business-unit-a/domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-dev",   "role": "developer"},
+    {"target": "business-unit-a/domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-maint", "role": "maintainer"},
+    {"target": "business-unit-a/domain-b", "shared_group": "iam-sim/sailpoint/gl-domain-b-owner", "role": "owner"},
 ]
 
 # ---------------------------------------------------------------------------
@@ -334,14 +354,14 @@ APPROACH_2_SHARES = [
 PROTECTION_PLAN = {
     "protected_branches": [
         {
-            "project": "domain-a/proj-1",
+            "project": "business-unit-a/domain-a/proj-1",
             "name": "main",
             "push_access_level": 0,           # No one
             "merge_access_level": 40,         # Maintainer
             "code_owner_approval_required": True,
         },
         {
-            "project": "domain-b/proj-1",
+            "project": "business-unit-a/domain-b/proj-1",
             "name": "main",
             "push_access_level": 0,
             "merge_access_level": 40,
@@ -349,21 +369,21 @@ PROTECTION_PLAN = {
         },
     ],
     "protected_tags": [
-        {"project": "domain-a/proj-1", "name": "v*", "create_access_level": 40},
-        {"project": "domain-b/proj-1", "name": "v*", "create_access_level": 40},
+        {"project": "business-unit-a/domain-a/proj-1", "name": "v*", "create_access_level": 40},
+        {"project": "business-unit-a/domain-b/proj-1", "name": "v*", "create_access_level": 40},
     ],
     # Protected environments require the env to exist first — the script handles that.
     # Environment NAMES carry the deployment-zone semantics (staging vs prod);
     # group nesting does not.
     "protected_environments": [
         {
-            "project": "domain-a/proj-1",
+            "project": "business-unit-a/domain-a/proj-1",
             "name": "staging",
             "deploy_access_levels": [{"access_level": 30}],   # Developer+
             "approval_rules": [],
         },
         {
-            "project": "domain-a/proj-1",
+            "project": "business-unit-a/domain-a/proj-1",
             "name": "prod",
             # Deploy restricted to Carol only (user-specific); will be set by username lookup
             "deploy_access_users": [_U["carol"]],
@@ -442,7 +462,7 @@ SAMPLE_CODEOWNERS = f"""\
 # (b) it declares `environment: prod`.
 ZONE_VARIABLES = [
     {
-        "group": "domain-a",
+        "group": "business-unit-a/domain-a",
         "key": "PROD_DEPLOY_TOKEN",
         "value": "domain-a-prod-secret",
         "protected": True,

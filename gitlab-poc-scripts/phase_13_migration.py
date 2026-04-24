@@ -48,7 +48,7 @@ def main():
 
     gl = GitLabClient()
 
-    api = f"{config.TOP_GROUP}/domain-a/proj-1"
+    api = f"{config.TOP_GROUP}/business-unit-a/domain-a/proj-1"
 
     # Step 1 — Before
     step("Step 1 — Capturing before-state on domain-a/proj-1")

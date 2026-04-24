@@ -57,7 +57,7 @@
   </span>
   <br>
   <span style="margin-top:0.4em; display:inline-block;">
-    Actions are scoped to <code>domain-a/proj-1</code> unless noted. Sources of truth:
+    Actions are scoped to <code>business-unit-a/domain-a/proj-1</code> unless noted. Sources of truth:
     <code>analysis</code> + <code>gitlab-poc-scripts/config.py</code>.
   </span>
 </div>
@@ -75,11 +75,11 @@
       <th colspan="4" style="text-align:center;">Settings &amp; admin</th>
     </tr>
     <tr>
-      <th class="action">Clone <code>domain-a/proj-1</code> (Internal)</th>
+      <th class="action">Clone <code>business-unit-a/domain-a/proj-1</code> (Internal)</th>
       <th class="action">Clone <code>restricted-proj-1</code> (Private)</th>
-      <th class="action">Clone <code>domain-b/proj-1</code> (sibling Internal)</th>
+      <th class="action">Clone <code>business-unit-a/domain-b/proj-1</code> (sibling Internal)</th>
 
-      <th class="action">Push to feature branch on <code>domain-a/proj-1</code></th>
+      <th class="action">Push to feature branch on <code>business-unit-a/domain-a/proj-1</code></th>
       <th class="action">Push directly to protected <code>main</code></th>
       <th class="action">Open MR targeting <code>main</code></th>
       <th class="action">Approve someone else's MR</th>
@@ -111,7 +111,7 @@
     <tr>
       <td class="persona-cell"><code>poc-alice</code><br><span style="font-weight:normal; color:#5e6c84;">Alice Developer</span></td>
       <td class="role-cell"><span class="badge badge-default">Developer</span></td>
-      <td class="scope-cell">domain-a/proj-1, domain-a/proj-2, domain-a/proj-3 (via Approach 1+2 shares)</td>
+      <td class="scope-cell">business-unit-a/domain-a/proj-1, business-unit-a/domain-a/proj-2, business-unit-a/domain-a/proj-3 (via Approach 1+2 shares)</td>
       <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
       <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
       <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
@@ -122,7 +122,7 @@
     <tr>
       <td class="persona-cell"><code>poc-bob</code><br><span style="font-weight:normal; color:#5e6c84;">Bob Maintainer</span></td>
       <td class="role-cell"><span class="badge badge-default">Maintainer</span></td>
-      <td class="scope-cell">domain-a/proj-1, domain-a/proj-2, domain-a/proj-3</td>
+      <td class="scope-cell">business-unit-a/domain-a/proj-1, business-unit-a/domain-a/proj-2, business-unit-a/domain-a/proj-3</td>
       <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
       <td class="action-cell can">Y</td><td class="action-cell cannot">N<sup>1</sup></td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
       <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N<sup>2</sup></td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
@@ -133,7 +133,7 @@
     <tr>
       <td class="persona-cell"><code>poc-carol</code><br><span style="font-weight:normal; color:#5e6c84;">Carol Operator</span></td>
       <td class="role-cell"><span class="badge badge-default">Reporter</span> + <span class="badge badge-custom">Operator</span></td>
-      <td class="scope-cell">domain-a/proj-1; individually allowed deployer to prod env</td>
+      <td class="scope-cell">business-unit-a/domain-a/proj-1; individually allowed deployer to prod env</td>
       <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
       <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="na action-cell">—</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
       <td class="action-cell cannot">N</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y<sup>4</sup></td><td class="action-cell cannot">N<sup>5</sup></td><td class="action-cell can">Y<sup>6</sup></td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td>
@@ -144,7 +144,7 @@
     <tr>
       <td class="persona-cell"><code>poc-paul</code><br><span style="font-weight:normal; color:#5e6c84;">Paul Promoter</span></td>
       <td class="role-cell"><span class="badge badge-default">Reporter</span> + <span class="badge badge-custom">Promoter</span></td>
-      <td class="scope-cell">domain-a/proj-1</td>
+      <td class="scope-cell">business-unit-a/domain-a/proj-1</td>
       <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
       <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="na action-cell">—</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
       <td class="action-cell cannot">N</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
@@ -155,7 +155,7 @@
     <tr>
       <td class="persona-cell"><code>poc-sam</code><br><span style="font-weight:normal; color:#5e6c84;">Sam Sec Mgr</span></td>
       <td class="role-cell"><span class="badge badge-default">Reporter</span> + <span class="badge badge-custom">Security Mgr</span></td>
-      <td class="scope-cell">domain-a/proj-1</td>
+      <td class="scope-cell">business-unit-a/domain-a/proj-1</td>
       <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
       <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell can">Y<sup>7</sup></td><td class="na action-cell">—</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
       <td class="action-cell cannot">N</td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
@@ -166,7 +166,7 @@
     <tr>
       <td class="persona-cell"><code>poc-rita</code><br><span style="font-weight:normal; color:#5e6c84;">Rita Reporter</span></td>
       <td class="role-cell"><span class="badge badge-default">Reporter</span></td>
-      <td class="scope-cell">domain-a/proj-1 (Approach 1 SSCAM share — removed by Phase 13)</td>
+      <td class="scope-cell">business-unit-a/domain-a/proj-1 (Approach 1 SSCAM share — removed by Phase 13)</td>
       <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
       <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="na action-cell">—</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
       <td class="action-cell cannot">N</td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
@@ -188,7 +188,7 @@
     <tr>
       <td class="persona-cell"><code>poc-con</code><br><span style="font-weight:normal; color:#5e6c84;">Con Confidential</span></td>
       <td class="role-cell"><span class="badge badge-default">Reporter</span></td>
-      <td class="scope-cell">domain-a/restricted/restricted-proj-1 ONLY (Private)</td>
+      <td class="scope-cell">business-unit-a/domain-a/restricted/restricted-proj-1 ONLY (Private)</td>
       <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
       <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="na action-cell">—</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
       <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
@@ -219,7 +219,7 @@
     <li>Even if Carol were on the approver list, GitLab blocks self-approval on a deployment she initiated.</li>
     <li>Operator's <code>admin_protected_environments</code> ability covers environments. Carol does <em>not</em> have <code>admin_protected_branches</code>, so branch rules remain Maintainer-only.</li>
     <li>Sam approves via the <code>admin_merge_request</code> ability — designed for security-sensitive MRs (e.g. <code>/infra/</code> per CODEOWNERS), without granting write access.</li>
-    <li>Dan opens MRs from a fork (<code>poc-dan/api</code>), not the upstream. He can't create a feature branch on upstream <code>domain-a/proj-1</code>.</li>
+    <li>Dan opens MRs from a fork (<code>poc-dan/api</code>), not the upstream. He can't create a feature branch on upstream <code>business-unit-a/domain-a/proj-1</code>.</li>
     <li>Dan can run pipelines on his fork. When his fork-MR runs against upstream, fork pipelines require Maintainer approval to execute, and protected variables remain hidden.</li>
     <li><code>root</code> can't push to <code>main</code> via the standard flow — protected-branch rule "Allowed to push: No one" applies even to admin. Admin can override by editing the protection rule first.</li>
   </ol>

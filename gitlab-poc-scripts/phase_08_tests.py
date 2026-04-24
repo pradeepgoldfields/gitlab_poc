@@ -89,9 +89,9 @@ def assert_allowed(username, fn, test_id, description):
 def main():
     banner("PHASE 8 — Role Enforcement Tests (API-based)")
 
-    api_project = f"{config.TOP_GROUP}/domain-a/proj-1"
-    ui_project = f"{config.TOP_GROUP}/domain-a/proj-2"
-    secrets_project = f"{config.TOP_GROUP}/domain-a/restricted/restricted-proj-1"
+    api_project = f"{config.TOP_GROUP}/business-unit-a/domain-a/proj-1"
+    ui_project = f"{config.TOP_GROUP}/business-unit-a/domain-a/proj-2"
+    secrets_project = f"{config.TOP_GROUP}/business-unit-a/domain-a/restricted/restricted-proj-1"
 
     # ------------------------------------------------------------------
     # T1 — Alice cannot delete domain-a/proj-1

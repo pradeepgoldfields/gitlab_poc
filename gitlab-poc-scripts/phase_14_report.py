@@ -82,26 +82,32 @@ def _live_verify(gl: GitLabClient, records: list[dict] | None = None) -> list[di
                        "detail": f"not available ({e}) — admin token "
                                  "required, or instance is not EE Ultimate"})
 
-    # 3. Hierarchy
+    # 3. Hierarchy — top-level peers + the business-unit + its domains
     try:
         encoded = quote(top, safe="")
         subs = gl.get_paginated(f"/groups/{encoded}/subgroups")
-        names = {s["path"] for s in subs}
-        for want in ("domain-a", "domain-b", "iam-sim", "platform"):
-            add(f"Top-level subgroup exists: {want}", want in names)
+        top_names = {s["path"] for s in subs}
+        for want in ("business-unit-a", "iam-sim", "platform"):
+            add(f"Top-level subgroup exists: {want}", want in top_names)
+        # Domains under business-unit-a
+        bu_encoded = quote(f"{top}/business-unit-a", safe="")
+        bu_subs = gl.get_paginated(f"/groups/{bu_encoded}/subgroups")
+        bu_names = {s["path"] for s in bu_subs}
+        for want in ("domain-a", "domain-b"):
+            add(f"Domain under business-unit-a: {want}", want in bu_names)
     except Exception as e:
         add("Hierarchy", False, str(e))
 
     # 4. restricted is private
     try:
-        g = gl.find_group(f"{top}/domain-a/restricted")
+        g = gl.find_group(f"{top}/business-unit-a/domain-a/restricted")
         add("restricted/ is Private", bool(g) and g.get("visibility") == "private",
             f"visibility={g.get('visibility') if g else 'missing'}")
     except Exception as e:
         add("restricted/ is Private", False, str(e))
 
     # 5. Branch protection on domain-a/proj-1
-    api_path = f"{top}/domain-a/proj-1"
+    api_path = f"{top}/business-unit-a/domain-a/proj-1"
     try:
         encoded = quote(api_path, safe="")
         mb = gl.get(f"/projects/{encoded}/protected_branches/main")
@@ -142,7 +148,7 @@ def _live_verify(gl: GitLabClient, records: list[dict] | None = None) -> list[di
             add("Approach 1 cleanup", False, str(e))
 
     # 8. Approach 2 domain-b has all 4 SailPoint shares
-    domain_b_path = f"{top}/domain-b"
+    domain_b_path = f"{top}/business-unit-a/domain-b"
     try:
         g = gl.find_group(domain_b_path)
         shares = [s.get("group_full_path", "") for s in (g or {}).get("shared_with_groups", [])]
@@ -163,6 +169,17 @@ def _live_verify(gl: GitLabClient, records: list[dict] | None = None) -> list[di
                 any(want in s for s in shares))
     except Exception as e:
         add("Custom role group shares", False, str(e))
+
+    # 9b. Top-level Owner mapping — IAM_DevOps_Owner shared with the top group
+    try:
+        encoded = quote(top, safe="")
+        g = gl.get(f"/groups/{encoded}")
+        shares = [s.get("group_full_path", "") for s in (g or {}).get("shared_with_groups", [])]
+        add("IAM_DevOps_Owner shared with top group as Owner",
+            any("IAM_DevOps_Owner" in s for s in shares),
+            f"shares={shares}")
+    except Exception as e:
+        add("Top-group Owner share", False, str(e))
 
     # 10. Audit events
     try:

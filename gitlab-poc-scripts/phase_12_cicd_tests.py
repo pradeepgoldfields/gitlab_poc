@@ -44,7 +44,7 @@ def main():
     alice = client_for_env("POC_ALICE_TOKEN")
     bob = client_for_env("POC_BOB_TOKEN")
 
-    api = f"{config.TOP_GROUP}/domain-a/proj-1"
+    api = f"{config.TOP_GROUP}/business-unit-a/domain-a/proj-1"
 
     # --------------------------------------------------------
     # Scenario A.1 — Feature branch pipeline does not expose PROD_DEPLOY_TOKEN

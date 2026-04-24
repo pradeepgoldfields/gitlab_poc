@@ -257,9 +257,9 @@ Inside <code>acme-poc</code>, create the following subgroups directly under the 
 <h3>Step 2.3 — Create restricted subgroups</h3>
 
 <div class="step">
-Inside <code>domain-a/</code>, create subgroup <code>restricted</code>. Set visibility to <strong>Private</strong>.
+Inside <code>business-unit-a/domain-a/</code>, create subgroup <code>restricted</code>. Set visibility to <strong>Private</strong>.
 
-<br><br>(Optional) repeat for <code>domain-b/restricted</code> if domain-b will hold confidential projects.
+<br><br>(Optional) repeat for <code>business-unit-a/domain-b/restricted</code> if domain-b will hold confidential projects.
 </div>
 
 <div class="callout-info">
@@ -279,19 +279,19 @@ This gives the same isolation the design wants — prod credentials and prod run
 <h3>Step 2.5 — Create projects</h3>
 
 <div class="step">
-Under <code>domain-a/</code>, create blank projects (each initialised with a README):
+Under <code>business-unit-a/domain-a/</code>, create blank projects (each initialised with a README):
 <ul>
   <li><code>api</code></li>
   <li><code>ui</code></li>
   <li><code>batch</code></li>
 </ul>
 
-Under <code>domain-a/restricted/</code>:
+Under <code>business-unit-a/domain-a/restricted/</code>:
 <ul>
   <li><code>restricted-proj-1</code></li>
 </ul>
 
-Under <code>domain-b/</code>:
+Under <code>business-unit-a/domain-b/</code>:
 <ul>
   <li><code>proj-1</code></li>
   <li><code>proj-2</code></li>
@@ -443,12 +443,12 @@ Navigate to <code>acme-poc</code> (top-level). Invite <code>poc-dan</code> as <s
 
 <h2>6. Phase 5 — Approach 1 Configuration</h2>
 
-<p>Wire up the hybrid pattern on <code>domain-a/proj-1</code>. This mirrors Bitbucket-style per-project access within the flat domain hierarchy.</p>
+<p>Wire up the hybrid pattern on <code>business-unit-a/domain-a/proj-1</code>. This mirrors Bitbucket-style per-project access within the flat domain hierarchy.</p>
 
-<h3>Step 5.1 — Share SSCAM groups with domain-a/proj-1</h3>
+<h3>Step 5.1 — Share SSCAM groups with business-unit-a/domain-a/proj-1</h3>
 
 <div class="step">
-Navigate to <code>acme-poc/domain-a/proj-1 → Manage → Members</code>. Click <strong>Invite a group</strong>.
+Navigate to <code>acme-poc/business-unit-a/domain-a/proj-1 → Manage → Members</code>. Click <strong>Invite a group</strong>.
 <ul>
   <li>Group to invite: <code>acme-poc/iam-sim/sscam/domain-a-proj-1_w</code></li>
   <li>Max role: <strong>Developer</strong></li>
@@ -477,7 +477,7 @@ This represents the "optional product-level group" in Approach 1.
 <h3>Step 5.3 — Share restricted-read with the restricted subgroup</h3>
 
 <div class="step">
-Navigate to <code>domain-a/restricted → Manage → Members → Invite a group</code>.
+Navigate to <code>business-unit-a/domain-a/restricted → Manage → Members → Invite a group</code>.
 <ul>
   <li>Invite group: <code>acme-poc/iam-sim/sailpoint/gl-restricted-read</code></li>
   <li>Max role: <strong>Reporter</strong></li>
@@ -495,7 +495,7 @@ Navigate to <code>domain-a → Manage → Members → Invite a group</code>.
 </div>
 
 <div class="expected">
-<strong>Check:</strong> Log in as Alice. She should now see <code>domain-a/proj-1</code>, <code>domain-a/proj-2</code>, and <code>domain-a/proj-3</code> in her project list. She can access <code>api</code> as Developer via two paths (SSCAM direct + SailPoint domain-level). Log in as Con — he should see <code>restricted-proj-1</code> only. Log in as Dan — he should see non-restricted projects via Internal visibility but cannot write anywhere.
+<strong>Check:</strong> Log in as Alice. She should now see <code>business-unit-a/domain-a/proj-1</code>, <code>business-unit-a/domain-a/proj-2</code>, and <code>business-unit-a/domain-a/proj-3</code> in her project list. She can access <code>api</code> as Developer via two paths (SSCAM direct + SailPoint domain-level). Log in as Con — he should see <code>restricted-proj-1</code> only. Log in as Dan — he should see non-restricted projects via Internal visibility but cannot write anywhere.
 </div>
 
 <hr>
@@ -504,7 +504,7 @@ Navigate to <code>domain-a → Manage → Members → Invite a group</code>.
 
 <h2>7. Phase 6 — Approach 2 Configuration</h2>
 
-<p>Wire up the pure group-centric pattern on the <code>domain-b/</code> domain. No project-level sharing — everything at the domain.</p>
+<p>Wire up the pure group-centric pattern on the <code>business-unit-a/domain-b/</code> domain. No project-level sharing — everything at the domain.</p>
 
 <h3>Step 6.1 — Share SailPoint groups with domain-b</h3>
 
@@ -517,7 +517,7 @@ Navigate to <code>acme-poc/domain-b → Manage → Members → Invite a group</c
   <li><code>gl-domain-b-owner</code> as <strong>Owner</strong></li>
 </ul>
 
-Do NOT share any groups with <code>domain-b/proj-1</code>, <code>domain-b/proj-2</code>, or <code>domain-b/proj-3</code> directly. All access must come from inheritance.
+Do NOT share any groups with <code>business-unit-a/domain-b/proj-1</code>, <code>business-unit-a/domain-b/proj-2</code>, or <code>business-unit-a/domain-b/proj-3</code> directly. All access must come from inheritance.
 </div>
 
 <h3>Step 6.2 — Verify inheritance</h3>
@@ -527,13 +527,13 @@ Ensure a test user (e.g., Alice) is a member of <code>gl-domain-b-dev</code>. Lo
 </div>
 
 <div class="expected">
-<strong>Check:</strong> Alice has Developer access on all three domain-b projects immediately, without any per-project configuration. The Members view on <code>domain-b/proj-1</code> shows access "inherited from domain-b" for Alice.
+<strong>Check:</strong> Alice has Developer access on all three domain-b projects immediately, without any per-project configuration. The Members view on <code>business-unit-a/domain-b/proj-1</code> shows access "inherited from domain-b" for Alice.
 </div>
 
 <h3>Step 6.3 — Test new-project auto-inheritance</h3>
 
 <div class="step">
-As Owner, create a fourth project <code>domain-b-reports</code> under <code>domain-b/</code>. Do not configure any members.
+As Owner, create a fourth project <code>domain-b-reports</code> under <code>business-unit-a/domain-b/</code>. Do not configure any members.
 </div>
 
 <div class="expected">
@@ -546,12 +546,12 @@ As Owner, create a fourth project <code>domain-b-reports</code> under <code>doma
 
 <h2>8. Phase 7 — Branch, Tag, and Environment Protection</h2>
 
-<p>Configure the protection rules that make roles meaningful. Apply to <code>domain-a/proj-1</code> and <code>domain-b/proj-1</code> as the two primary test projects.</p>
+<p>Configure the protection rules that make roles meaningful. Apply to <code>business-unit-a/domain-a/proj-1</code> and <code>business-unit-a/domain-b/proj-1</code> as the two primary test projects.</p>
 
-<h3>Step 7.1 — Protect main on domain-a/proj-1</h3>
+<h3>Step 7.1 — Protect main on business-unit-a/domain-a/proj-1</h3>
 
 <div class="step">
-Navigate to <code>domain-a/proj-1 → Settings → Repository → Protected branches</code>. For <code>main</code>:
+Navigate to <code>business-unit-a/domain-a/proj-1 → Settings → Repository → Protected branches</code>. For <code>main</code>:
 <ul>
   <li>Allowed to merge: <strong>Maintainers</strong></li>
   <li>Allowed to push and merge: <strong>No one</strong></li>
@@ -581,7 +581,7 @@ Add an approval rule:
 <h3>Step 7.3 — Add CODEOWNERS</h3>
 
 <div class="step">
-As <code>poc-bob</code> (Maintainer), add a <code>CODEOWNERS</code> file at the root of <code>domain-a/proj-1</code>:
+As <code>poc-bob</code> (Maintainer), add a <code>CODEOWNERS</code> file at the root of <code>business-unit-a/domain-a/proj-1</code>:
 
 <pre><code>*                @acme-poc/iam-sim/devops-tooling/IAM_DevOps_domain-a_Maintainer
 /infra/          @acme-poc/iam-sim/devops-tooling/IAM_DevOps_domain-a_SecurityManager
@@ -620,10 +620,10 @@ Navigate to <code>Settings → CI/CD → Protected environments</code>. Add:
 Note: the "prod" environment must be created before it can be protected. Create it via <code>Operate → Environments → New environment</code> first.
 </div>
 
-<h3>Step 7.6 — Add a minimal pipeline to domain-a/proj-1</h3>
+<h3>Step 7.6 — Add a minimal pipeline to business-unit-a/domain-a/proj-1</h3>
 
 <div class="step">
-As Bob, add <code>.gitlab-ci.yml</code> to domain-a/proj-1:
+As Bob, add <code>.gitlab-ci.yml</code> to business-unit-a/domain-a/proj-1:
 
 <pre><code>stages:
   - build
@@ -657,10 +657,10 @@ deploy_prod:
 Commit to main.
 </div>
 
-<h3>Step 7.7 — Repeat on domain-b/proj-1</h3>
+<h3>Step 7.7 — Repeat on business-unit-a/domain-b/proj-1</h3>
 
 <div class="step">
-Repeat steps 7.1–7.6 on <code>domain-b/proj-1</code>, substituting the domain-b SailPoint groups in approval rules and CODEOWNERS. This gives you two fully protected projects — one under each approach.
+Repeat steps 7.1–7.6 on <code>business-unit-a/domain-b/proj-1</code>, substituting the domain-b SailPoint groups in approval rules and CODEOWNERS. This gives you two fully protected projects — one under each approach.
 </div>
 
 <hr>
@@ -669,13 +669,13 @@ Repeat steps 7.1–7.6 on <code>domain-b/proj-1</code>, substituting the domain-
 
 <h2>9. Phase 8 — Baseline Role Tests</h2>
 
-<p>Verify that standard roles (Developer, Maintainer, Reporter) behave correctly on <code>domain-a/proj-1</code>.</p>
+<p>Verify that standard roles (Developer, Maintainer, Reporter) behave correctly on <code>business-unit-a/domain-a/proj-1</code>.</p>
 
 <h3>Step 8.1 — Alice pushes a feature branch</h3>
 
 <div class="step">
 In Alice's browser profile:
-<pre><code>git clone git@&lt;gitlab-host&gt;:acme-poc/domain-a/proj-1.git
+<pre><code>git clone git@&lt;gitlab-host&gt;:acme-poc/business-unit-a/domain-a/proj-1.git
 cd api
 git checkout -b alice-feature-1
 echo "change" &gt;&gt; test.txt
@@ -790,7 +790,7 @@ As Bob, navigate to <code>Operate → Environments → prod → Deployments</cod
 <h3>Step 9.1 — Assign custom roles to IAM groups</h3>
 
 <div class="step">
-Navigate to <code>domain-a/proj-1 → Manage → Members → Invite a group</code>. Add each:
+Navigate to <code>business-unit-a/domain-a/proj-1 → Manage → Members → Invite a group</code>. Add each:
 <ul>
   <li><code>IAM_DevOps_domain-a_Promoter</code> with custom role <strong>Promoter</strong></li>
   <li><code>IAM_DevOps_domain-a_Operator</code> with custom role <strong>Operator</strong></li>
@@ -829,7 +829,7 @@ Push to main. Pipeline runs with manual promotion job.
 <h3>Step 9.3 — Test Operator (layered restriction)</h3>
 
 <div class="step">
-As Carol (Operator), navigate to <code>domain-a/proj-1</code>. Confirm she has the Operator custom role on the project via Members view.
+As Carol (Operator), navigate to <code>business-unit-a/domain-a/proj-1</code>. Confirm she has the Operator custom role on the project via Members view.
 
 <br><br>Test 1: Play the <code>deploy_prod</code> job on a tag pipeline. Expected to succeed (she is in the prod environment allow-list configured in Phase 7).
 
@@ -847,7 +847,7 @@ As Carol (Operator), navigate to <code>domain-a/proj-1</code>. Confirm she has t
 <div class="step">
 As Sam (Security Manager):
 
-<br><br>Test 1: Navigate to <code>domain-a/proj-1 → Secure → Vulnerability report</code>. Expected to see the dashboard (even if empty).
+<br><br>Test 1: Navigate to <code>business-unit-a/domain-a/proj-1 → Secure → Vulnerability report</code>. Expected to see the dashboard (even if empty).
 
 <br><br>Test 2: If any vulnerability is present (generate one by committing a <code>.gitleaks.toml</code> test secret), dismiss it with a justification. Expected to succeed.
 
@@ -890,14 +890,14 @@ git add CONTRIBUTORS.md
 git commit -m "Add contributor"
 git push origin dan-contribution</code></pre>
 
-Then on the fork project page, open a merge request targeting the upstream <code>acme-poc/domain-a/proj-1:main</code>.
+Then on the fork project page, open a merge request targeting the upstream <code>acme-poc/business-unit-a/domain-a/proj-1:main</code>.
 </div>
 
 <h3>Step 10.3 — Dan cannot push to upstream</h3>
 
 <div class="step">
 As Dan:
-<pre><code>git remote add upstream git@&lt;gitlab-host&gt;:acme-poc/domain-a/proj-1.git
+<pre><code>git remote add upstream git@&lt;gitlab-host&gt;:acme-poc/business-unit-a/domain-a/proj-1.git
 git push upstream dan-contribution</code></pre>
 </div>
 
@@ -968,10 +968,10 @@ Navigate to <code>acme-poc/domain-a → Build → Runners → New group runner</
 Register it on any available host (a Docker container works for the PoC).
 </div>
 
-<h3>Step 11.3 — Verify inheritance to domain-a/proj-1 and domain-b/proj-1</h3>
+<h3>Step 11.3 — Verify inheritance to business-unit-a/domain-a/proj-1 and business-unit-a/domain-b/proj-1</h3>
 
 <div class="step">
-Add a debug job to <code>domain-a/proj-1</code> <code>.gitlab-ci.yml</code>:
+Add a debug job to <code>business-unit-a/domain-a/proj-1</code> <code>.gitlab-ci.yml</code>:
 
 <pre><code>debug_prod_token:
   stage: build
@@ -994,7 +994,7 @@ Push a v* tag.
 <h3>Step 11.4 — Verify non-live does NOT inherit</h3>
 
 <div class="step">
-Create a project <code>domain-b/test-service</code> (sibling domain — different scope than the runner). Add the same debug job.
+Create a project <code>business-unit-a/domain-b/test-service</code> (sibling domain — different scope than the runner). Add the same debug job.
 </div>
 
 <div class="expected">
@@ -1004,7 +1004,7 @@ Create a project <code>domain-b/test-service</code> (sibling domain — differen
 <h3>Step 11.5 — Add a new project mid-test</h3>
 
 <div class="step">
-Create <code>domain-a/reporting</code>. Add the same debug job.
+Create <code>business-unit-a/domain-a/reporting</code>. Add the same debug job.
 </div>
 
 <div class="expected">
@@ -1059,14 +1059,14 @@ Dan opens another MR from his fork that includes a debug_prod_token step. Config
 <h3>Step 12.4 — Scenario D: CI_JOB_TOKEN allowlist</h3>
 
 <div class="step">
-Create a project <code>domain-b/proj-1</code> that attempts to clone <code>domain-a/proj-1</code> using <code>CI_JOB_TOKEN</code>:
+Create a project <code>business-unit-a/domain-b/proj-1</code> that attempts to clone <code>business-unit-a/domain-a/proj-1</code> using <code>CI_JOB_TOKEN</code>:
 <pre><code>test_token:
   script:
-    - git clone "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/acme-poc/domain-a/proj-1.git"</code></pre>
+    - git clone "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/acme-poc/business-unit-a/domain-a/proj-1.git"</code></pre>
 </div>
 
 <div class="expected">
-<strong>Expected:</strong> Clone fails with 403. Add <code>domain-b/proj-1</code> to <code>domain-a/proj-1 → Settings → CI/CD → Job token permissions → Allowlist</code>. Retry. Clone now succeeds.
+<strong>Expected:</strong> Clone fails with 403. Add <code>business-unit-a/domain-b/proj-1</code> to <code>business-unit-a/domain-a/proj-1 → Settings → CI/CD → Job token permissions → Allowlist</code>. Retry. Clone now succeeds.
 </div>
 
 <h3>Step 12.5 — Scenario E: Runner scoping (already validated in Step 11.4)</h3>
@@ -1074,7 +1074,7 @@ Create a project <code>domain-b/proj-1</code> that attempts to clone <code>domai
 <h3>Step 12.6 — Scenario F: Developer cannot access CI/CD settings</h3>
 
 <div class="step">
-As Alice, navigate to <code>domain-a/proj-1 → Settings → CI/CD → Variables</code>.
+As Alice, navigate to <code>business-unit-a/domain-a/proj-1 → Settings → CI/CD → Variables</code>.
 </div>
 
 <div class="expected">
@@ -1084,7 +1084,7 @@ As Alice, navigate to <code>domain-a/proj-1 → Settings → CI/CD → Variables
 <h3>Step 12.7 — Scenario G: Scheduled pipeline owner</h3>
 
 <div class="step">
-As Bob, create a schedule on <code>domain-a/proj-1</code> running every hour. Later, reduce Bob's role to Reporter in the IAM group and observe the schedule's next run.
+As Bob, create a schedule on <code>business-unit-a/domain-a/proj-1</code> running every hour. Later, reduce Bob's role to Reporter in the IAM group and observe the schedule's next run.
 </div>
 
 <div class="expected">
@@ -1094,7 +1094,7 @@ As Bob, create a schedule on <code>domain-a/proj-1</code> running every hour. La
 <h3>Step 12.8 — Scenario H: Group-level variable inheritance</h3>
 
 <div class="step">
-Add a variable at <code>domain-a/</code> level. Confirm it is visible in <code>api</code>, <code>ui</code>, and <code>batch</code>. Add a project-level variable with the same key in <code>api</code>. Confirm project value overrides.
+Add a variable at <code>business-unit-a/domain-a/</code> level. Confirm it is visible in <code>api</code>, <code>ui</code>, and <code>batch</code>. Add a project-level variable with the same key in <code>api</code>. Confirm project value overrides.
 </div>
 
 <h3>Step 12.9 — Scenario I: Environment-scoped same-key variables</h3>
@@ -1109,18 +1109,18 @@ Add <code>API_KEY=staging-val</code> scoped to <code>staging</code>, and <code>A
 
 <h2>14. Phase 13 — Migration from Approach 1 to Approach 2</h2>
 
-<p>Migrate <code>domain-a/proj-1</code> from project-level SSCAM access to domain-level SailPoint access, with no user outage.</p>
+<p>Migrate <code>business-unit-a/domain-a/proj-1</code> from project-level SSCAM access to domain-level SailPoint access, with no user outage.</p>
 
 <h3>Step 13.1 — Capture before-state</h3>
 
 <div class="step">
-Document Alice's current access paths on <code>domain-a/proj-1</code>. From the Members view, screenshot her entry showing access via <code>domain-a-proj-1_w</code> (SSCAM direct share at project level) and via <code>gl-domain-a-dev</code> (SailPoint share at domain level, inherited).
+Document Alice's current access paths on <code>business-unit-a/domain-a/proj-1</code>. From the Members view, screenshot her entry showing access via <code>domain-a-proj-1_w</code> (SSCAM direct share at project level) and via <code>gl-domain-a-dev</code> (SailPoint share at domain level, inherited).
 </div>
 
 <h3>Step 13.2 — Parallel-grant phase</h3>
 
 <div class="step">
-Confirm <code>gl-domain-a-dev</code> is already shared with <code>domain-a/</code> domain (done in Phase 5). Confirm Alice is a member. No new action needed — the parallel state is already in place.
+Confirm <code>gl-domain-a-dev</code> is already shared with <code>business-unit-a/domain-a/</code> domain (done in Phase 5). Confirm Alice is a member. No new action needed — the parallel state is already in place.
 
 <br><br>As Alice, log out and log back in. Confirm she can still push a feature branch.
 </div>
@@ -1132,7 +1132,7 @@ Confirm <code>gl-domain-a-dev</code> is already shared with <code>domain-a/</cod
 <h3>Step 13.3 — Remove SSCAM project-level shares</h3>
 
 <div class="step">
-Navigate to <code>domain-a/proj-1 → Manage → Members</code>. Remove the shared groups <code>domain-a-proj-1_w</code> and <code>domain-a-proj-1_r</code>.
+Navigate to <code>business-unit-a/domain-a/proj-1 → Manage → Members</code>. Remove the shared groups <code>domain-a-proj-1_w</code> and <code>domain-a-proj-1_r</code>.
 </div>
 
 <h3>Step 13.4 — Validate post-removal</h3>
@@ -1214,8 +1214,8 @@ Based on the results, produce a Go / Conditional Go / No-Go recommendation. If a
   <li>Full hierarchy constructed under <code>acme-poc</code></li>
   <li>IAM simulation groups populated</li>
   <li>All 8 test users invited and assigned to correct groups</li>
-  <li>Approach 1 wired on <code>domain-a/proj-1</code></li>
-  <li>Approach 2 wired on <code>domain-b/</code> domain</li>
+  <li>Approach 1 wired on <code>business-unit-a/domain-a/proj-1</code></li>
+  <li>Approach 2 wired on <code>business-unit-a/domain-b/</code> domain</li>
   <li>Branch, tag, environment protection configured on both primary projects</li>
   <li>Baseline role tests executed with screenshots</li>
   <li>Three custom role tests executed with screenshots</li>
