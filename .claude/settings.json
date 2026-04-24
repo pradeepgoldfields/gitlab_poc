@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py -3 -c \"import playwright; print\\('playwright python pkg:', playwright.__version__ if hasattr\\(playwright, '__version__'\\) else 'installed'\\)\")",
+      "Bash(py -3 -m pip install playwright)",
+      "Bash(py -3 -m playwright install chromium)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec gitlab-ce cat /etc/gitlab/initial_root_password)",
+      "Bash(echo \"---exit $?---\")",
+      "Bash(py -3 -c \"from playwright.sync_api import sync_playwright; p = sync_playwright\\(\\).start\\(\\); b = p.chromium.launch\\(headless=True\\); print\\('Chromium OK, version:', b.version\\); b.close\\(\\); p.stop\\(\\)\")",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec gitlab cat /etc/gitlab/initial_root_password)",
+      "Bash(py -3 ui_tests/run_ui_tests.py --only 01-hierarchy-top --headless --timeout 30)",
+      "Bash(curl -s http://localhost:8929/users/sign_in)",
+      "Bash(py -3 -c ' *)",
+      "Bash(py -3 ui_tests/run_ui_tests.py)",
+      "Bash(py -3 ui_tests/run_ui_tests.py --headless --timeout 30 --only 03-baseline-access --only 07-inner-source --only 08b-sibling-isolation --only 10c2-fork-as-dan --only 10f-cicd-settings-alice --only 10f2-cicd-settings-bob)",
+      "Bash(curl -s -c /tmp/c -b /tmp/c -X POST \"http://localhost:8929/users/sign_in\" -d \"user[login]=poc-alice&user[password]=PocTestP@ssw0rd!2026\" -L)",
+      "Bash(rm -f /tmp/c)",
+      "Bash(curl -sL -c /tmp/c -b /tmp/c -o /tmp/page1 \"http://localhost:8929/users/sign_in\")",
+      "Read(//tmp/**)",
+      "Bash(py -3 ui_tests/run_ui_tests.py --timeout 30)"
+    ]
+  }
+}

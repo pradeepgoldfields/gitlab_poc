@@ -1,0 +1,93 @@
+# =============================================================================
+# Secrets — NEVER commit
+# =============================================================================
+# Persisted admin URL + PAT (chmod 600 on POSIX, written by run_poc.py).
+.pocenv
+.pocenv.*
+*.pocenv
+
+# Test-user PATs minted by setup_test_users.py.
+.env.tokens
+tokens.json
+*.tokens
+
+# Generic env / secret files.
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+secrets.json
+credentials.json
+
+# UI evidence credentials. The checked-in test_users.properties holds sandbox
+# defaults; uncomment to ignore the file entirely (recommended on shared
+# instances where the file may end up holding real passwords).
+# gitlab-poc-scripts/ui_tests/test_users.properties
+
+# =============================================================================
+# Claude Code local-only config (keep team config in settings.json)
+# =============================================================================
+.claude/settings.local.json
+.claude/.credentials*
+
+# =============================================================================
+# Per-run output (regenerated every run)
+# =============================================================================
+# JSONL traces + reports written by phase_14_report.py.
+api-calls.jsonl
+*.jsonl
+gitlab-poc-scripts/poc-final-report.html
+gitlab-poc-scripts/poc-final-report.txt
+
+# UI evidence artifacts (the runner wipes the screenshots dir at the start of
+# every run; we never want them in git).
+gitlab-poc-scripts/ui_tests/screenshots/
+gitlab-poc-scripts/ui_tests/ui-test-report.html
+gitlab-poc-scripts/ui_tests/screenshots-*/
+
+# Stray screenshots / images at any level (debug captures, ad-hoc shots
+# left by the Playwright runner). The three HTML PoC reports at the root
+# are deliverables and remain tracked — only PNGs are excluded.
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+
+# Login-failure debug captures.
+**/_login_failed__*
+
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# =============================================================================
+# Editor / OS noise
+# =============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

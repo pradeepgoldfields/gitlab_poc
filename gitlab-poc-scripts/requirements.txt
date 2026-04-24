@@ -1,0 +1,6 @@
+requests>=2.28.0
+
+# UI evidence capture (ui_tests/run_ui_tests.py).
+# After installing, run once: `python -m playwright install chromium`
+# to download the browser binary.
+playwright>=1.40.0

@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GitLab Access Model PoC — Report</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; max-width: 960px; margin: 2em auto; padding: 0 1.5em; color: #000000; background: #ffffff; line-height: 1.6; }
+  h1 { font-size: 2em; border-bottom: 2px solid #0052cc; padding-bottom: 0.3em; }
+  h2 { font-size: 1.4em; margin-top: 2em; border-bottom: 1px solid #dfe1e6; padding-bottom: 0.2em; }
+  h3 { font-size: 1.15em; margin-top: 1.5em; color: #000000; }
+  h4 { font-size: 1.02em; margin-top: 1.2em; color: #000000; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  th, td { border: 1px solid #dfe1e6; padding: 0.5em 0.75em; text-align: left; vertical-align: top; }
+  th { background: #f4f5f7; font-weight: 600; }
+  pre { background: #f4f5f7; border: 1px solid #dfe1e6; border-radius: 3px; padding: 0.75em 1em; overflow-x: auto; font-size: 0.9em; }
+  code { background: #f4f5f7; padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.9em; }
+  pre code { background: none; padding: 0; }
+  .callout-info { border-left: 4px solid #0052cc; background: #deebff; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-warn { border-left: 4px solid #ff991f; background: #fffae6; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-success { border-left: 4px solid #00875a; background: #e3fcef; padding: 0.75em 1em; margin: 1em 0; }
+  .scenario { background: #f4f5f7; border-left: 4px solid #0052cc; padding: 0.75em 1em; margin: 1em 0; border-radius: 3px; }
+  .outcome { background: #e3fcef; border-left: 4px solid #00875a; padding: 0.5em 1em; margin: 0.5em 0 1em 0; border-radius: 3px; }
+  .verify-ui { background: #f4f5f7; border-left: 4px solid #6b778c; padding: 0.5em 1em; margin: 0.5em 0 1.2em 0; border-radius: 3px; font-size: 0.92em; }
+  .verify-ui ul { margin: 0.3em 0; }
+  .verify-ui code { background: #fff; }
+  ul, ol { padding-left: 1.5em; }
+  li { margin: 0.3em 0; }
+  .diagram { text-align: center; margin: 1.5em 0; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .caption { font-size: 0.9em; color: #42526e; margin-top: 0.4em; font-style: italic; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>GitLab Access Model PoC — Report</h1>
+
+<p><strong>Purpose:</strong> This document describes the Proof of Concept executed to validate the GitLab enterprise access model on a self-managed instance. It records what was built, how access was assigned, and the outcomes of every access and CI/CD scenario tested.</p>
+
+<p><strong>Audience:</strong> Platform engineering, DevOps leadership, security architects, and anyone reviewing the PoC results ahead of broader rollout.</p>
+
+<p><strong>Scope covered:</strong> Group and subgroup hierarchy, project creation, role assignment, branch and tag protection, environment protection and deploy approvals, inner source contribution flow, access inheritance, CI/CD variables, runner scoping, job tokens, manual jobs, and scheduled pipelines. <em>Out of scope for this PoC:</em> SSO, SCIM, compliance frameworks, SIEM integration.</p>
+
+<div class="callout-info">
+<strong>How to verify each use case in the UI:</strong> Each "Outcome" block below is followed by a <em>Verify in UI</em> callout listing the exact GitLab pages a reviewer can open to confirm the result. The URLs use the narrative paths from this report (<code>acme/verticals/payments/service-a</code> etc.). Substitute <code>&lt;gitlab-host&gt;</code> with your instance hostname and replace the group/project paths with the equivalents in your environment.
+</div>
+
+<hr>
+
+<h2>Table of Contents</h2>
+<ol>
+  <li>Summary of Outcomes</li>
+  <li>Environment and Participants</li>
+  <li>Target Model</li>
+  <li>Part 1 — Hierarchy Construction</li>
+  <li>Part 2 — User Invitation and Access Assignment</li>
+  <li>Part 3 — Baseline Access Enforcement</li>
+  <li>Part 4 — Protected Branch and Merge Flow</li>
+  <li>Part 5 — Protected Environment and Deployment</li>
+  <li>Part 6 — Protected Tags</li>
+  <li>Part 7 — Inner Source Contribution</li>
+  <li>Part 8 — Inheritance and Sovereignty</li>
+  <li>Part 9 — Audit and Review</li>
+  <li>Part 10 — CI/CD Access Scenarios</li>
+  <li>Success Criteria — Results</li>
+  <li>Observations and Gaps</li>
+  <li>Recommendation</li>
+</ol>
+
+<hr>
+
+<h2>1. Summary of Outcomes</h2>
+
+<p>The PoC validated the end-to-end access model against 25 defined success criteria. All scenarios executed as expected. The role hierarchy (Guest → Reporter → Developer → Maintainer → Owner) enforced the intended boundaries on repository actions, and the CI/CD layer (protected variables, protected environments, protected tags, runner scoping, job token allowlists) respected the same access boundaries in pipeline execution.</p>
+
+<p>Key findings:</p>
+
+<ul>
+  <li>Role-based inheritance behaved consistently — a single assignment at a group propagated to all subgroups and projects beneath.</li>
+  <li>Protected CI variables were genuinely isolated from feature branch pipelines and from fork pipelines, even when external contributors were allowed to run CI.</li>
+  <li>Production deployments could be restricted to specific users and gated by two-person approval.</li>
+  <li>Inner source contribution via fork-and-MR worked without granting write access to external contributors.</li>
+  <li>No additional GitLab configuration was required beyond the built-in access controls — no third-party tooling, compliance framework, or IdP integration was needed for the access model itself to function.</li>
+</ul>
+
+<hr>
+
+<h2>2. Environment and Participants</h2>
+
+<h3>2.1 GitLab Environment</h3>
+
+<p>The PoC was executed on a self-managed GitLab Ultimate instance. A dedicated top-level sandbox group was created to contain all PoC activity and isolate it from production groups.</p>
+
+<h3>2.2 Test Users</h3>
+
+<p>Four test user accounts were used to simulate four personas. Each account was controlled by the PoC operator, with multiple browser sessions (distinct profiles and private windows) used to operate as different users concurrently.</p>
+
+<table>
+<thead><tr><th>User</th><th>Persona simulated</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>Alice</td><td>Developer</td><td>Day-to-day coding, feature branches, MRs</td></tr>
+<tr><td>Bob</td><td>Maintainer / tech lead</td><td>MR approval, merge authority, CI configuration</td></tr>
+<tr><td>Carol</td><td>SRE / release manager</td><td>Tag creation, production deployments</td></tr>
+<tr><td>Dan</td><td>External contributor (inner source)</td><td>Fork-and-MR contribution from outside the vertical</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2>3. Target Model</h2>
+
+<p>The PoC built the following hierarchy:</p>
+
+<div class="diagram">
+<svg viewBox="0 0 720 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Group hierarchy diagram">
+  <style>
+    .grp { fill: #deebff; stroke: #0052cc; stroke-width: 1.5; }
+    .sub { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .proj { fill: #fffae6; stroke: #ff991f; stroke-width: 1.5; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 13px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 11px; fill: #42526e; text-anchor: middle; }
+    .line { stroke: #6b778c; stroke-width: 1.5; fill: none; }
+  </style>
+
+  <!-- Top group -->
+  <rect x="290" y="20" width="140" height="48" rx="6" class="grp"/>
+  <text x="360" y="42" class="lbl">acme</text>
+  <text x="360" y="58" class="lbl-small">(top-level group)</text>
+
+  <!-- Lines down to two children -->
+  <path d="M 360 68 L 360 100 L 160 100 L 160 130" class="line"/>
+  <path d="M 360 68 L 360 100 L 560 100 L 560 130" class="line"/>
+
+  <!-- platform subgroup -->
+  <rect x="80" y="130" width="160" height="48" rx="6" class="sub"/>
+  <text x="160" y="152" class="lbl">platform</text>
+  <text x="160" y="168" class="lbl-small">(horizontal)</text>
+
+  <!-- verticals subgroup -->
+  <rect x="480" y="130" width="160" height="48" rx="6" class="sub"/>
+  <text x="560" y="152" class="lbl">verticals</text>
+  <text x="560" y="168" class="lbl-small">(container)</text>
+
+  <!-- line from platform down -->
+  <path d="M 160 178 L 160 230" class="line"/>
+
+  <!-- ci-templates project -->
+  <rect x="70" y="230" width="180" height="48" rx="6" class="proj"/>
+  <text x="160" y="252" class="lbl">ci-templates</text>
+  <text x="160" y="268" class="lbl-small">(project, internal)</text>
+
+  <!-- line from verticals down -->
+  <path d="M 560 178 L 560 230" class="line"/>
+
+  <!-- payments subgroup -->
+  <rect x="480" y="230" width="160" height="48" rx="6" class="sub"/>
+  <text x="560" y="252" class="lbl">payments</text>
+  <text x="560" y="268" class="lbl-small">(vertical)</text>
+
+  <!-- line from payments to two projects -->
+  <path d="M 560 278 L 560 310 L 470 310 L 470 340" class="line"/>
+  <path d="M 560 278 L 560 310 L 650 310 L 650 340" class="line"/>
+
+  <!-- service-a -->
+  <rect x="390" y="340" width="160" height="48" rx="6" class="proj"/>
+  <text x="470" y="362" class="lbl">service-a</text>
+  <text x="470" y="378" class="lbl-small">(pilot project)</text>
+
+  <!-- service-b -->
+  <rect x="570" y="340" width="160" height="48" rx="6" class="proj"/>
+  <text x="650" y="362" class="lbl">service-b</text>
+  <text x="650" y="378" class="lbl-small">(second project)</text>
+</svg>
+<div class="caption">Figure 1 — Group, subgroup, and project hierarchy constructed for the PoC.</div>
+</div>
+
+<p>Role assignments were designed as follows:</p>
+
+<div class="diagram">
+<svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Role assignment diagram">
+  <style>
+    .user { fill: #fff; stroke: #0052cc; stroke-width: 1.5; }
+    .role-dev { fill: #deebff; stroke: #0052cc; stroke-width: 1.5; }
+    .role-maint { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .role-owner { fill: #ffebe6; stroke: #de350b; stroke-width: 1.5; }
+    .role-rep { fill: #fffae6; stroke: #ff991f; stroke-width: 1.5; }
+    .role-guest { fill: #f4f5f7; stroke: #6b778c; stroke-width: 1.5; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 13px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 11px; fill: #42526e; text-anchor: middle; }
+    .line { stroke: #6b778c; stroke-width: 1.2; fill: none; }
+    .line-dashed { stroke: #6b778c; stroke-width: 1.2; fill: none; stroke-dasharray: 4,3; }
+    .col-head { font-family: -apple-system, Arial, sans-serif; font-size: 13px; fill: #000; font-weight: 600; text-anchor: middle; }
+  </style>
+
+  <!-- column headers -->
+  <text x="100" y="30" class="col-head">User</text>
+  <text x="400" y="30" class="col-head">Role granted at</text>
+  <text x="660" y="30" class="col-head">Effective access</text>
+
+  <!-- Alice row -->
+  <rect x="40" y="55" width="120" height="40" rx="6" class="user"/>
+  <text x="100" y="80" class="lbl">Alice</text>
+  <rect x="300" y="55" width="200" height="40" rx="6" class="role-dev"/>
+  <text x="400" y="73" class="lbl">Developer</text>
+  <text x="400" y="89" class="lbl-small">on payments subgroup</text>
+  <rect x="580" y="55" width="160" height="40" rx="6" class="role-dev"/>
+  <text x="660" y="80" class="lbl">Developer on all</text>
+
+  <!-- Bob row -->
+  <rect x="40" y="115" width="120" height="40" rx="6" class="user"/>
+  <text x="100" y="140" class="lbl">Bob</text>
+  <rect x="300" y="115" width="200" height="40" rx="6" class="role-maint"/>
+  <text x="400" y="133" class="lbl">Maintainer</text>
+  <text x="400" y="149" class="lbl-small">on payments subgroup</text>
+  <rect x="580" y="115" width="160" height="40" rx="6" class="role-maint"/>
+  <text x="660" y="140" class="lbl">Maintainer on all</text>
+
+  <!-- Carol row -->
+  <rect x="40" y="175" width="120" height="40" rx="6" class="user"/>
+  <text x="100" y="200" class="lbl">Carol</text>
+  <rect x="300" y="165" width="200" height="28" rx="6" class="role-rep"/>
+  <text x="400" y="183" class="lbl">Reporter on payments</text>
+  <rect x="300" y="195" width="200" height="28" rx="6" class="role-dev"/>
+  <text x="400" y="213" class="lbl">Developer on service-a</text>
+  <rect x="580" y="175" width="160" height="40" rx="6" class="role-dev"/>
+  <text x="660" y="193" class="lbl">Dev on service-a,</text>
+  <text x="660" y="209" class="lbl">Reporter elsewhere</text>
+
+  <!-- Dan row -->
+  <rect x="40" y="235" width="120" height="40" rx="6" class="user"/>
+  <text x="100" y="260" class="lbl">Dan</text>
+  <rect x="300" y="235" width="200" height="40" rx="6" class="role-guest"/>
+  <text x="400" y="253" class="lbl">Guest</text>
+  <text x="400" y="269" class="lbl-small">on acme (top-level)</text>
+  <rect x="580" y="235" width="160" height="40" rx="6" class="role-guest"/>
+  <text x="660" y="253" class="lbl">Can see Internal,</text>
+  <text x="660" y="269" class="lbl">contribute via fork</text>
+
+  <!-- PoC Operator row -->
+  <rect x="40" y="295" width="120" height="40" rx="6" class="user"/>
+  <text x="100" y="320" class="lbl">Operator</text>
+  <rect x="300" y="295" width="200" height="40" rx="6" class="role-owner"/>
+  <text x="400" y="313" class="lbl">Owner</text>
+  <text x="400" y="329" class="lbl-small">on acme (top-level)</text>
+  <rect x="580" y="295" width="160" height="40" rx="6" class="role-owner"/>
+  <text x="660" y="320" class="lbl">Full control</text>
+</svg>
+<div class="caption">Figure 2 — Role assignments per user across the hierarchy.</div>
+</div>
+
+<hr>
+
+<h2>4. Part 1 — Hierarchy Construction</h2>
+
+<p>The PoC began by constructing the group and project hierarchy shown in Figure 1. The top-level group <code>acme</code> was created at Private visibility. Two subgroups were added beneath it: <code>platform</code> (Internal visibility, to enable inner source on shared capabilities) and <code>verticals</code> (Private). Within <code>verticals</code>, the <code>payments</code> subgroup was created as the pilot vertical. The project <code>service-a</code> was created inside <code>payments</code> as the main test project, and a second project <code>ci-templates</code> was created under <code>platform</code> to represent a shared horizontal capability.</p>
+
+<p>All groups and projects were initialized with default settings. Each project was created with a README to enable immediate clone and push.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> The hierarchy was constructed cleanly through the web UI. Navigation confirmed that <code>acme</code> contained <code>platform</code> and <code>verticals</code>, that <code>verticals</code> contained <code>payments</code>, and that projects appeared in the correct parents.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>Top-level group tree: <code>https://&lt;gitlab-host&gt;/acme</code></li>
+  <li>Subgroup overview: <code>https://&lt;gitlab-host&gt;/acme/verticals</code></li>
+  <li>Pilot project: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a</code></li>
+  <li>Shared CI templates: <code>https://&lt;gitlab-host&gt;/acme/platform/ci-templates</code></li>
+</ul>
+</div>
+
+<hr>
+
+<h2>5. Part 2 — User Invitation and Access Assignment</h2>
+
+<p>Once the hierarchy existed, the four test users were invited and assigned roles per Figure 2.</p>
+
+<p>Alice was added to <code>acme/verticals/payments</code> as a Developer. Bob was added to the same subgroup as a Maintainer. Carol was added to <code>payments</code> as a Reporter and additionally to <code>service-a</code> directly as a Developer, to verify that access can be elevated at a lower level in the tree. Dan was added only at the top-level <code>acme</code> as a Guest, simulating an engineer from another part of the organization who should be able to discover inner-source projects but have no default contribution rights.</p>
+
+<p>The Members view of <code>service-a</code> confirmed Carol held two listings: "Reporter (inherited from payments)" and "Developer (direct)", with GitLab applying the higher role.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> All four users received their assigned roles. Inheritance and elevation both behaved as expected. Logging in as each user in separate browser sessions confirmed they saw exactly the projects they should and nothing more.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>Top-level group members (Dan as Guest): <code>https://&lt;gitlab-host&gt;/groups/acme/-/group_members</code></li>
+  <li>Payments subgroup members (Alice Dev, Bob Maint, Carol Reporter): <code>https://&lt;gitlab-host&gt;/groups/acme/verticals/payments/-/group_members</code></li>
+  <li>service-a project members (Carol shows Reporter inherited + Developer direct): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/project_members</code></li>
+  <li>Admin → Users (impersonate to log in as each persona): <code>https://&lt;gitlab-host&gt;/admin/users</code></li>
+</ul>
+</div>
+
+<hr>
+
+<h2>6. Part 3 — Baseline Access Enforcement</h2>
+
+<p>Before any protection rules were applied, the baseline role model was exercised to confirm GitLab's default enforcement.</p>
+
+<p>Alice, as Developer, successfully cloned <code>service-a</code>, created a feature branch, committed, and pushed. Her attempt to access project Settings was rejected with a permission error. The Delete Project option was absent from her view, and a direct URL attempt to the project settings edit page returned 403.</p>
+
+<p>Carol attempted to push to <code>ci-templates</code> (a project on which she held no role). The clone succeeded (because <code>ci-templates</code> is Internal), but the push was rejected with "You are not allowed to push code to this project."</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> Baseline role enforcement worked as documented. Developers could write to projects where they held the role; they were blocked from settings and destructive actions. Users with no role were blocked from writing even to Internal projects.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>service-a project overview (Alice should see code, no Settings): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a</code></li>
+  <li>Project settings (403 for Alice, accessible to Bob): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/edit</code></li>
+  <li>ci-templates as Carol (clone OK because Internal, push blocked): <code>https://&lt;gitlab-host&gt;/acme/platform/ci-templates</code></li>
+</ul>
+</div>
+
+<hr>
+
+<h2>7. Part 4 — Protected Branch and Merge Flow</h2>
+
+<p>The <code>main</code> branch of <code>service-a</code> was protected with the following settings: Allowed to merge — Maintainers; Allowed to push — No one; Allowed to force push — No; Require approval from code owners — On.</p>
+
+<p>Merge request approval rules were configured: prevent approval by author; prevent approvals by users who add commits; remove all approvals when commits are added; minimum approvals required — 1 (later raised to 2 to verify scaling).</p>
+
+<p>A <code>CODEOWNERS</code> file was added to the repository root naming Bob as default reviewer and a security group as required reviewer for <code>/infra/</code> paths.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Merge request flow diagram">
+  <style>
+    .box { fill: #fff; stroke: #0052cc; stroke-width: 1.5; }
+    .box-block { fill: #ffebe6; stroke: #de350b; stroke-width: 1.5; }
+    .box-pass { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #42526e; text-anchor: middle; }
+    .arrow { stroke: #6b778c; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+    .arrow-block { stroke: #de350b; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead-red); }
+  </style>
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#6b778c"/>
+    </marker>
+    <marker id="arrowhead-red" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#de350b"/>
+    </marker>
+  </defs>
+
+  <!-- Start -->
+  <rect x="30" y="30" width="130" height="40" rx="6" class="box"/>
+  <text x="95" y="48" class="lbl">Alice pushes</text>
+  <text x="95" y="62" class="lbl-small">feature branch</text>
+  <path d="M 160 50 L 200 50" class="arrow"/>
+
+  <!-- Opens MR -->
+  <rect x="200" y="30" width="130" height="40" rx="6" class="box"/>
+  <text x="265" y="48" class="lbl">Opens MR</text>
+  <text x="265" y="62" class="lbl-small">to main</text>
+  <path d="M 330 50 L 370 50" class="arrow"/>
+
+  <!-- direct push attempt -->
+  <rect x="200" y="110" width="130" height="40" rx="6" class="box-block"/>
+  <text x="265" y="128" class="lbl">Alice pushes direct</text>
+  <text x="265" y="142" class="lbl-small">to main → BLOCKED</text>
+
+  <!-- Self-approve block -->
+  <rect x="370" y="30" width="150" height="40" rx="6" class="box-block"/>
+  <text x="445" y="48" class="lbl">Alice tries to</text>
+  <text x="445" y="62" class="lbl-small">approve own MR → BLOCKED</text>
+  <path d="M 445 70 L 445 105" class="arrow"/>
+
+  <!-- Bob approves -->
+  <rect x="370" y="110" width="150" height="40" rx="6" class="box-pass"/>
+  <text x="445" y="128" class="lbl">Bob approves</text>
+  <text x="445" y="142" class="lbl-small">(Maintainer, not author)</text>
+  <path d="M 520 130 L 560 130" class="arrow"/>
+
+  <!-- Alice tries merge -->
+  <rect x="560" y="110" width="160" height="40" rx="6" class="box-block"/>
+  <text x="640" y="128" class="lbl">Alice tries to merge</text>
+  <text x="640" y="142" class="lbl-small">→ BLOCKED (Developer)</text>
+  <path d="M 640 150 L 640 185" class="arrow"/>
+
+  <!-- Bob merges -->
+  <rect x="560" y="190" width="160" height="40" rx="6" class="box-pass"/>
+  <text x="640" y="208" class="lbl">Bob merges</text>
+  <text x="640" y="222" class="lbl-small">→ success</text>
+
+  <!-- Raised to 2 approvers -->
+  <rect x="200" y="260" width="250" height="40" rx="6" class="box-block"/>
+  <text x="325" y="278" class="lbl">Rule raised to 2 approvers</text>
+  <text x="325" y="292" class="lbl-small">→ Bob alone cannot unblock merge</text>
+</svg>
+<div class="caption">Figure 3 — Merge flow with branch protection and approval rules. Red boxes indicate blocked actions; green indicate successful ones.</div>
+</div>
+
+<p>The flow was exercised by each persona:</p>
+
+<ul>
+  <li>Alice pushed a feature branch successfully.</li>
+  <li>Alice attempted to push directly to <code>main</code>. The push was rejected with "You are not allowed to push code to protected branches on this project."</li>
+  <li>Alice opened a merge request from her feature branch to <code>main</code>. The MR showed "1 approval required" and listed Bob as an eligible approver.</li>
+  <li>Alice attempted to approve her own MR. The Approve button was disabled.</li>
+  <li>Alice attempted to merge. No merge button was available, because Developer role does not grant merge to protected branches.</li>
+  <li>Bob approved and merged successfully.</li>
+  <li>The approval rule was raised to require 2 approvals. A new MR opened by Alice then remained blocked even after Bob approved, because no second eligible approver existed. This verified the mechanism; the rule was then restored to 1 for subsequent scenarios.</li>
+</ul>
+
+<div class="outcome">
+<strong>Outcome:</strong> Branch protection, self-approval prevention, and approval scaling all behaved as designed. Authors could not approve their own work. Developers could not merge to protected branches. Approval counts could be increased to enforce stricter reviews.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>Protected branches config (main → Maintainers can merge, no one can push): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/repository#js-protected-branches-settings</code></li>
+  <li>MR approval rules (prevent author approval, min approvals): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/merge_requests</code></li>
+  <li>Open / merged MRs and approval state: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/merge_requests</code></li>
+  <li>CODEOWNERS file in repo root: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/blob/main/CODEOWNERS</code></li>
+</ul>
+</div>
+
+<hr>
+
+<h2>8. Part 5 — Protected Environment and Deployment</h2>
+
+<p>A minimal CI pipeline was added to <code>service-a</code> with three stages: build, deploy to staging, and deploy to prod. The staging deploy was configured to run automatically on <code>main</code>. The prod deploy was configured as a manual job gated by a release tag.</p>
+
+<p>Two environments were protected. Staging allowed Developers and Maintainers to deploy. Prod was restricted to Carol individually (representing the SRE role) with a required approval from Bob (representing a two-person rule).</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Deploy flow diagram">
+  <style>
+    .box { fill: #fff; stroke: #0052cc; stroke-width: 1.5; }
+    .box-block { fill: #ffebe6; stroke: #de350b; stroke-width: 1.5; }
+    .box-pass { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .box-gate { fill: #fffae6; stroke: #ff991f; stroke-width: 1.5; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #42526e; text-anchor: middle; }
+    .arrow { stroke: #6b778c; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead2); }
+  </style>
+  <defs>
+    <marker id="arrowhead2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#6b778c"/>
+    </marker>
+  </defs>
+
+  <rect x="30" y="30" width="160" height="46" rx="6" class="box"/>
+  <text x="110" y="50" class="lbl">Bob pushes v0.1 tag</text>
+  <text x="110" y="66" class="lbl-small">(protected tag pattern)</text>
+  <path d="M 190 53 L 230 53" class="arrow"/>
+
+  <rect x="230" y="30" width="160" height="46" rx="6" class="box"/>
+  <text x="310" y="50" class="lbl">Tag pipeline triggers</text>
+  <text x="310" y="66" class="lbl-small">deploy_prod (manual)</text>
+
+  <rect x="30" y="130" width="160" height="46" rx="6" class="box-block"/>
+  <text x="110" y="150" class="lbl">Alice tries to play</text>
+  <text x="110" y="166" class="lbl-small">deploy_prod → BLOCKED</text>
+
+  <rect x="230" y="130" width="160" height="46" rx="6" class="box"/>
+  <text x="310" y="150" class="lbl">Carol plays</text>
+  <text x="310" y="166" class="lbl-small">deploy_prod</text>
+  <path d="M 390 153 L 430 153" class="arrow"/>
+
+  <rect x="430" y="130" width="160" height="46" rx="6" class="box-gate"/>
+  <text x="510" y="150" class="lbl">Waiting for approval</text>
+  <text x="510" y="166" class="lbl-small">(Bob required)</text>
+  <path d="M 590 153 L 630 153" class="arrow"/>
+
+  <rect x="630" y="130" width="160" height="46" rx="6" class="box-pass"/>
+  <text x="710" y="150" class="lbl">Bob approves</text>
+  <text x="710" y="166" class="lbl-small">deploy proceeds</text>
+
+  <rect x="230" y="220" width="360" height="46" rx="6" class="box-pass"/>
+  <text x="410" y="240" class="lbl">Audit log: Carol triggered, Bob approved, deploy succeeded</text>
+</svg>
+<div class="caption">Figure 4 — Protected environment deployment flow with two-person rule.</div>
+</div>
+
+<p>The deployment scenario was executed by tagging <code>v0.1</code> on <code>main</code>, which triggered the prod deploy job in a waiting-for-manual state. Alice attempted to trigger the job and the play button was disabled with a permission tooltip. Carol triggered the job; it transitioned to "waiting for approval". Bob approved via the environment's deployment approval control, and the job completed successfully.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> Production deployments were successfully gated by user-specific authority and two-person approval. Unauthorized users could not initiate deploys, and even the authorized user could not deploy alone.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>Environments list with protection badges: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/environments</code></li>
+  <li>Protected environments config (staging + prod, allowed deployers, approvers): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd#js-protected-environments-settings</code></li>
+  <li>Pipeline showing manual deploy_prod gated for Carol: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/pipelines</code></li>
+  <li>Deployment approvals on prod: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/environments?scope=available</code></li>
+</ul>
+</div>
+
+<hr>
+
+<h2>9. Part 6 — Protected Tags</h2>
+
+<p>The tag pattern <code>v*</code> was protected in <code>service-a</code> with creation allowed only for Maintainers.</p>
+
+<p>Alice attempted to push a <code>v1.0</code> tag. The push was rejected with "You are not allowed to create this tag as it is protected." Bob performed the same action and the tag was created successfully.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> Release tag creation was restricted to the correct personas. Developers could not create release tags; Maintainers could.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>Protected tags config (v* pattern → Maintainers): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/repository#js-protected-tags-settings</code></li>
+  <li>Tag list (v1.0 created by Bob): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/tags</code></li>
+</ul>
+</div>
+
+<hr>
+
+<h2>10. Part 7 — Inner Source Contribution</h2>
+
+<p>Inner source was validated using Dan as the external contributor. Dan held only Guest on the top-level <code>acme</code> and had no role on <code>payments</code> or <code>service-a</code>.</p>
+
+<p>To enable discovery, <code>service-a</code> was switched from Private to Internal (along with its parent subgroups, as required by the inheritance rule that a child cannot be more visible than its parent). Dan was then able to find <code>service-a</code> via search, browse it, and fork it into his personal namespace.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Inner source contribution flow">
+  <style>
+    .box { fill: #fff; stroke: #0052cc; stroke-width: 1.5; }
+    .box-block { fill: #ffebe6; stroke: #de350b; stroke-width: 1.5; }
+    .box-pass { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #42526e; text-anchor: middle; }
+    .arrow { stroke: #6b778c; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead3); }
+  </style>
+  <defs>
+    <marker id="arrowhead3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#6b778c"/>
+    </marker>
+  </defs>
+
+  <rect x="30" y="30" width="170" height="46" rx="6" class="box"/>
+  <text x="115" y="50" class="lbl">Dan (no role on project)</text>
+  <text x="115" y="66" class="lbl-small">finds it via search</text>
+  <path d="M 200 53 L 240 53" class="arrow"/>
+
+  <rect x="240" y="30" width="170" height="46" rx="6" class="box-pass"/>
+  <text x="325" y="50" class="lbl">Forks to dan/service-a</text>
+  <text x="325" y="66" class="lbl-small">(succeeds)</text>
+  <path d="M 410 53 L 450 53" class="arrow"/>
+
+  <rect x="450" y="30" width="170" height="46" rx="6" class="box"/>
+  <text x="535" y="50" class="lbl">Commits to fork,</text>
+  <text x="535" y="66" class="lbl-small">opens MR upstream</text>
+
+  <rect x="240" y="130" width="170" height="46" rx="6" class="box-block"/>
+  <text x="325" y="150" class="lbl">Direct push to upstream</text>
+  <text x="325" y="166" class="lbl-small">→ BLOCKED (no role)</text>
+
+  <rect x="450" y="130" width="170" height="46" rx="6" class="box-pass"/>
+  <text x="535" y="150" class="lbl">Bob reviews,</text>
+  <text x="535" y="166" class="lbl-small">approves, merges</text>
+
+  <rect x="240" y="220" width="380" height="46" rx="6" class="box-pass"/>
+  <text x="430" y="240" class="lbl">Dan's change in main — never had write access</text>
+</svg>
+<div class="caption">Figure 5 — Inner source contribution via fork and MR, with no write access granted.</div>
+</div>
+
+<p>Dan cloned his fork, committed a small change adding himself to a <code>CONTRIBUTORS.md</code> file, pushed to his fork, and opened a merge request targeting <code>acme/verticals/payments/service-a:main</code>. He then attempted to push the same branch directly to the upstream repository. This push was rejected.</p>
+
+<p>Bob reviewed, approved, and merged the MR. Dan's change landed on <code>main</code> without Dan ever having write access to the upstream project.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> Inner source worked end-to-end. External contributors could discover, fork, and propose changes. Merge authority remained entirely with the host vertical.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>service-a visibility set to Internal (logged in as Dan should be discoverable): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/edit#js-general-project-settings</code></li>
+  <li>Explore projects (Dan's view, sees Internal projects): <code>https://&lt;gitlab-host&gt;/explore/projects</code></li>
+  <li>Dan's fork in his personal namespace: <code>https://&lt;gitlab-host&gt;/dan/service-a</code></li>
+  <li>MR opened from fork to upstream: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/merge_requests?scope=all&amp;state=all</code></li>
+</ul>
+</div>
+
+<hr>
+
+<h2>11. Part 8 — Inheritance and Sovereignty</h2>
+
+<p>To verify inheritance behavior, a second project <code>service-b</code> was created inside <code>payments</code> without any direct member assignment. Alice was able to clone and push branches to <code>service-b</code> immediately — access inherited from her Developer role on <code>payments</code>.</p>
+
+<p>To verify sibling isolation, a second vertical <code>acme/verticals/identity</code> was created with a project <code>service-x</code> inside. Alice had no access to this sibling vertical despite her role on <code>payments</code>. The project was invisible in her navigation and direct URL access returned 404.</p>
+
+<p>To verify access elevation at lower levels, Alice was granted Maintainer specifically on <code>service-a</code>. Her effective role on <code>service-a</code> became Maintainer (the higher role), while she remained Developer on <code>payments</code> overall and Developer on <code>service-b</code>.</p>
+
+<p>An attempt to reduce Alice's access on <code>service-a</code> to Guest was rejected by GitLab, which preserved her inherited Developer role from the parent group.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 780 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Inheritance rules diagram">
+  <style>
+    .grp { fill: #deebff; stroke: #0052cc; stroke-width: 1.5; }
+    .proj { fill: #fffae6; stroke: #ff991f; stroke-width: 1.5; }
+    .sibling { fill: #f4f5f7; stroke: #6b778c; stroke-width: 1.5; }
+    .badge-dev { fill: #deebff; stroke: #0052cc; }
+    .badge-maint { fill: #e3fcef; stroke: #00875a; }
+    .badge-none { fill: #ffebe6; stroke: #de350b; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #000; text-anchor: middle; }
+    .line { stroke: #6b778c; stroke-width: 1.5; fill: none; }
+  </style>
+
+  <!-- verticals -->
+  <rect x="320" y="20" width="140" height="38" rx="6" class="grp"/>
+  <text x="390" y="44" class="lbl">verticals</text>
+
+  <!-- payments -->
+  <path d="M 390 58 L 390 80 L 200 80 L 200 100" class="line"/>
+  <rect x="100" y="100" width="200" height="50" rx="6" class="grp"/>
+  <text x="200" y="120" class="lbl">payments</text>
+  <rect x="120" y="125" width="160" height="20" rx="3" class="badge-dev"/>
+  <text x="200" y="140" class="lbl-small">Alice: Developer (direct)</text>
+
+  <!-- identity (sibling) -->
+  <path d="M 390 58 L 390 80 L 580 80 L 580 100" class="line"/>
+  <rect x="480" y="100" width="200" height="50" rx="6" class="sibling"/>
+  <text x="580" y="120" class="lbl">identity (sibling)</text>
+  <rect x="500" y="125" width="160" height="20" rx="3" class="badge-none"/>
+  <text x="580" y="140" class="lbl-small">Alice: no access</text>
+
+  <!-- service-a -->
+  <path d="M 200 150 L 200 180 L 120 180 L 120 200" class="line"/>
+  <rect x="30" y="200" width="180" height="50" rx="6" class="proj"/>
+  <text x="120" y="220" class="lbl">service-a</text>
+  <rect x="40" y="225" width="160" height="20" rx="3" class="badge-maint"/>
+  <text x="120" y="240" class="lbl-small">Alice: Maintainer (raised)</text>
+
+  <!-- service-b -->
+  <path d="M 200 150 L 200 180 L 290 180 L 290 200" class="line"/>
+  <rect x="220" y="200" width="180" height="50" rx="6" class="proj"/>
+  <text x="310" y="220" class="lbl">service-b</text>
+  <rect x="230" y="225" width="160" height="20" rx="3" class="badge-dev"/>
+  <text x="310" y="240" class="lbl-small">Alice: Developer (inherited)</text>
+
+  <!-- service-x under identity -->
+  <path d="M 580 150 L 580 180 L 580 200" class="line"/>
+  <rect x="490" y="200" width="180" height="50" rx="6" class="proj"/>
+  <text x="580" y="220" class="lbl">service-x</text>
+  <rect x="500" y="225" width="160" height="20" rx="3" class="badge-none"/>
+  <text x="580" y="240" class="lbl-small">Alice: no access</text>
+</svg>
+<div class="caption">Figure 6 — Inheritance and sibling isolation: access flows down one branch only; the highest assignment wins.</div>
+</div>
+
+<div class="outcome">
+<strong>Outcome:</strong> Inheritance propagated access downward correctly. Sibling verticals were fully isolated. Access could be raised at lower levels but not lowered below the inherited floor.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>service-b members (Alice listed as Developer, inherited from payments): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-b/-/project_members</code></li>
+  <li>service-a members (Alice raised to Maintainer direct): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/project_members</code></li>
+  <li>identity sibling vertical (Alice should get 404 when impersonated): <code>https://&lt;gitlab-host&gt;/acme/verticals/identity/service-x</code></li>
+  <li>Verticals tree at a glance: <code>https://&lt;gitlab-host&gt;/groups/acme/verticals</code></li>
+</ul>
+</div>
+
+<hr>
+
+<h2>12. Part 9 — Audit and Review</h2>
+
+<p>The audit event stream was reviewed at both the top-level group and the project level. The group-level audit log at <code>acme → Secure → Audit events</code> showed entries for user invitations, role assignments, branch protection rule changes, deploy approvals, tag creations, and project creations. Each event carried actor, target, and timestamp fields.</p>
+
+<p>The project-level audit log for <code>service-a</code> showed MR approvals, merges, and setting changes specific to that project.</p>
+
+<p>The Members view of <code>acme/verticals/payments</code> was exported as a CSV, producing a clear list of members with their roles and whether access was direct or inherited. This export serves as the baseline access review artifact for the vertical.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> Significant access and CI events were captured in the audit log with sufficient detail for review. Membership was exportable for formal access reviews.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>Top-level group audit events: <code>https://&lt;gitlab-host&gt;/groups/acme/-/audit_events</code></li>
+  <li>Project-level audit events for service-a: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/audit_events</code></li>
+  <li>Instance-wide audit events (admin): <code>https://&lt;gitlab-host&gt;/admin/audit_logs</code></li>
+  <li>Members CSV export from payments subgroup: <code>https://&lt;gitlab-host&gt;/groups/acme/verticals/payments/-/group_members</code> (use Export as CSV button)</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>13. Part 10 — CI/CD Access Scenarios</h2>
+
+<p>A set of nine CI/CD scenarios were executed to validate that the access model governs pipeline behavior as expected. These scenarios extended the pipeline built in Part 5 and tested variables, runners, job tokens, manual jobs, and schedules.</p>
+
+<h3>13.1 Scenario A — Protected Variables on Feature vs. Protected Branches</h3>
+
+<p>Two CI/CD variables were added to <code>service-a</code>. <code>PROD_SECRET</code> was marked Protect and Mask, with environment scope <code>prod</code>. <code>DEV_CONFIG</code> was left unprotected with wildcard scope.</p>
+
+<p>A debug job was added to the pipeline that echoed both variables on every branch. When Alice pushed to a feature branch, the pipeline ran and the log showed <code>DEV_CONFIG</code> with its value while <code>PROD_SECRET</code> was blank. After merging to <code>main</code>, the same job running on the protected ref still did not expose <code>PROD_SECRET</code> because the job lacked an <code>environment: prod</code> declaration. Only when a job explicitly declared the prod environment did the variable become available.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Protected variable visibility matrix">
+  <style>
+    .hdr { fill: #f4f5f7; stroke: #dfe1e6; }
+    .cell-pass { fill: #e3fcef; stroke: #00875a; }
+    .cell-fail { fill: #ffebe6; stroke: #de350b; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #42526e; text-anchor: middle; }
+  </style>
+
+  <text x="400" y="20" class="lbl" style="font-weight:600">PROD_SECRET visibility matrix</text>
+
+  <!-- Row/col labels -->
+  <rect x="50" y="40" width="180" height="40" class="hdr"/>
+  <text x="140" y="63" class="lbl">context</text>
+
+  <rect x="230" y="40" width="180" height="40" class="hdr"/>
+  <text x="320" y="60" class="lbl">no environment</text>
+  <text x="320" y="74" class="lbl-small">(job without environment:)</text>
+
+  <rect x="410" y="40" width="180" height="40" class="hdr"/>
+  <text x="500" y="60" class="lbl">environment: prod</text>
+  <text x="500" y="74" class="lbl-small">(job with matching env)</text>
+
+  <!-- Feature branch row -->
+  <rect x="50" y="80" width="180" height="40" class="hdr"/>
+  <text x="140" y="100" class="lbl">Feature branch</text>
+  <text x="140" y="114" class="lbl-small">(unprotected)</text>
+
+  <rect x="230" y="80" width="180" height="40" class="cell-fail"/>
+  <text x="320" y="104" class="lbl">hidden</text>
+
+  <rect x="410" y="80" width="180" height="40" class="cell-fail"/>
+  <text x="500" y="104" class="lbl">hidden</text>
+
+  <!-- main row -->
+  <rect x="50" y="120" width="180" height="40" class="hdr"/>
+  <text x="140" y="140" class="lbl">main (protected)</text>
+  <text x="140" y="154" class="lbl-small">no env declared</text>
+
+  <rect x="230" y="120" width="180" height="40" class="cell-fail"/>
+  <text x="320" y="144" class="lbl">hidden (no env match)</text>
+
+  <rect x="410" y="120" width="180" height="40" class="cell-pass"/>
+  <text x="500" y="144" class="lbl">visible</text>
+
+  <!-- tag/prod deploy -->
+  <rect x="50" y="160" width="180" height="40" class="hdr"/>
+  <text x="140" y="180" class="lbl">v* tag (protected)</text>
+  <text x="140" y="194" class="lbl-small">prod deploy job</text>
+
+  <rect x="230" y="160" width="180" height="40" class="cell-fail"/>
+  <text x="320" y="184" class="lbl">hidden (no env match)</text>
+
+  <rect x="410" y="160" width="180" height="40" class="cell-pass"/>
+  <text x="500" y="184" class="lbl">visible</text>
+
+  <!-- fork -->
+  <rect x="50" y="200" width="180" height="40" class="hdr"/>
+  <text x="140" y="220" class="lbl">Fork MR</text>
+  <text x="140" y="234" class="lbl-small">(approved to run)</text>
+
+  <rect x="230" y="200" width="180" height="40" class="cell-fail"/>
+  <text x="320" y="224" class="lbl">hidden</text>
+
+  <rect x="410" y="200" width="180" height="40" class="cell-fail"/>
+  <text x="500" y="224" class="lbl">hidden (fork context)</text>
+</svg>
+<div class="caption">Figure 7 — Visibility of the protected, environment-scoped variable PROD_SECRET across pipeline contexts.</div>
+</div>
+
+<div class="outcome">
+<strong>Outcome:</strong> Protected variables required both a protected ref and a matching environment declaration to be exposed. The combination of the Protect flag and the environment scope was the correct configuration for production secrets.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>CI/CD variables (PROD_SECRET protected+masked, env scope prod; DEV_CONFIG unprotected): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd#js-cicd-variables-settings</code></li>
+  <li>Pipeline list (compare debug job logs across feature vs main): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/pipelines</code></li>
+</ul>
+</div>
+
+<h3>13.2 Scenario B — Manual Job Authorization</h3>
+
+<p>The existing <code>deploy_prod</code> manual job targeted the protected <code>prod</code> environment restricted to Carol. When Alice navigated to a pipeline containing this job, the play button was disabled with a "You do not have permission" tooltip. When Carol navigated to the same pipeline, the job transitioned to "waiting for approval" after she played it, and completed after Bob approved.</p>
+
+<p>A second manual job <code>run_adhoc</code> was added without any environment declaration. Alice was able to play this job successfully, confirming that manual jobs without environment protection are gated only by project role — not by any user-specific list.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> User-specific restriction of manual jobs requires an environment declaration. Without one, any Developer can trigger the job. This is an important nuance for CI configuration.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>Latest pipeline showing both manual jobs (deploy_prod gated, run_adhoc open): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/pipelines</code></li>
+  <li>Protected environments (prod allowed list = Carol only): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd#js-protected-environments-settings</code></li>
+</ul>
+</div>
+
+<h3>13.3 Scenario C — Fork Pipeline Isolation</h3>
+
+<p>Dan modified his fork to include the debug job from Scenario A and opened an MR. Fork pipelines were configured to require approval before running. Bob, acting as Trusted Committer, approved the pipeline.</p>
+
+<p>When the fork pipeline ran, the debug job output showed <code>DEV_CONFIG</code> with its value but <code>PROD_SECRET</code> was blank. Even though the pipeline had been approved to run, the fork context did not grant access to protected variables.</p>
+
+<p>Dan's attempt to navigate to <code>service-a</code>'s CI/CD settings was rejected — he had no role on the upstream project and could not see variable keys or values.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> Fork pipelines were isolated from protected variables regardless of run approval. External contributors could not view variable configuration through the UI.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>MR pipeline (run requires approval, debug job log shows PROD_SECRET blank): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/merge_requests?scope=all&amp;state=all</code></li>
+  <li>Merge request settings — fork pipeline approval: <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/merge_requests</code></li>
+  <li>Dan's view of upstream CI/CD settings (should be blocked): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd</code></li>
+</ul>
+</div>
+
+<h3>13.4 Scenario D — CI_JOB_TOKEN Scoping</h3>
+
+<p>The default job token allowlist on <code>service-a</code> was inspected. It restricted inbound access via <code>CI_JOB_TOKEN</code> to the project itself.</p>
+
+<p>A test job was added to <code>service-b</code> that attempted to clone <code>service-a</code> using the job token. The clone failed with a 403 authentication error. The allowlist on <code>service-a</code> was then explicitly updated to include <code>service-b</code>, and the clone succeeded on the next run. Removing <code>service-b</code> from the allowlist restored the deny behavior.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> Cross-project job token access required explicit allowlisting. The default was correctly restrictive.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>Job token allowlist on service-a (target of inbound calls): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd#js-token-access</code></li>
+  <li>service-b pipeline (success/fail of clone job over time): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-b/-/pipelines</code></li>
+</ul>
+</div>
+
+<h3>13.5 Scenario E — Runner Scoping</h3>
+
+<p>A group-level runner was registered under <code>acme/verticals/payments</code> with the tag <code>payments-only</code> and the Protected flag enabled. A job in <code>service-a</code> tagged with <code>payments-only</code> ran successfully on <code>main</code> but remained in pending state when pushed to a feature branch, because the runner only picked up jobs from protected refs.</p>
+
+<p>A second test project was created in <code>acme/verticals/identity</code> with an identical job tagged <code>payments-only</code>. The job remained pending indefinitely — the runner, being group-scoped to <code>payments</code>, did not see jobs from sibling verticals.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> Group-scoped runners correctly refused jobs from other groups. Protected runners correctly refused jobs from unprotected refs. Runner scoping provides a clean layer of CI isolation.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>Group-level runners (payments-only tag, Protected flag): <code>https://&lt;gitlab-host&gt;/groups/acme/verticals/payments/-/runners</code></li>
+  <li>Project runner availability for service-a (which runners are visible): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd#js-runners-settings</code></li>
+  <li>identity sibling project pipeline (jobs stay pending — no eligible runner): <code>https://&lt;gitlab-host&gt;/acme/verticals/identity/service-x/-/pipelines</code></li>
+</ul>
+</div>
+
+<h3>13.6 Scenario F — CI/CD Settings Access</h3>
+
+<p>Alice, as Developer, was unable to view or edit CI/CD variables, modify protected branch rules, or register new runners. The relevant Settings sections were either absent from her UI or were read-only. Bob, as Maintainer, could perform all three actions.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> Maintainer was confirmed as the minimum role for CI/CD configuration. Developers could not weaken protections or exfiltrate variables.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>CI/CD settings (visible to Bob, hidden/read-only for Alice): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd</code></li>
+  <li>Repository / Protected branches (rule editing requires Maintainer): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/repository</code></li>
+</ul>
+</div>
+
+<h3>13.7 Scenario G — Scheduled Pipeline Ownership</h3>
+
+<p>Bob created a pipeline schedule on <code>service-a</code> running on <code>main</code> every hour. The schedule list showed Bob as the owner.</p>
+
+<p>As a test, Bob's role on <code>service-a</code> was reduced from Maintainer to Developer. The schedule continued to fire, but jobs requiring Maintainer privileges (in this case, a deploy to <code>prod</code>) failed at runtime. Scheduled pipelines execute with the current permissions of their owner, not frozen-in permissions from the schedule's creation time.</p>
+
+<p>Ownership of the schedule was then transferred via the "Take ownership" control to a long-lived account, removing the dependency on Bob's individual role.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> Scheduled pipelines inherit their owner's live permissions. Ownership must be managed deliberately, especially when the original owner changes role or leaves. Schedule ownership should be held by a service-style account for production-critical automation.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>Pipeline schedules (owner column, Take ownership control): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/pipeline_schedules</code></li>
+  <li>Pipeline history filtered to scheduled runs (success/failure under reduced role): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/pipelines?scope=all&amp;source=schedule</code></li>
+</ul>
+</div>
+
+<h3>13.8 Scenario H — Variable Inheritance and Override</h3>
+
+<p>A group-level variable <code>PAYMENTS_SHARED</code> was set at <code>acme/verticals/payments</code>. Jobs in both <code>service-a</code> and <code>service-b</code> were able to read it — confirming downward inheritance.</p>
+
+<p>A project-level variable with the same key was then added to <code>service-a</code> with a different value. Jobs in <code>service-a</code> then read the project-level value, while <code>service-b</code> continued to read the group-level value. Project variables override group variables at the project scope.</p>
+
+<p>A variable added to the sibling group <code>acme/verticals/identity</code> was not visible to jobs in <code>service-a</code>, confirming sibling isolation for variables.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> Variable inheritance followed the group hierarchy cleanly. Overrides behaved as expected. Sibling isolation held for CI variables just as it did for repository access.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>Group-level variables on payments (PAYMENTS_SHARED): <code>https://&lt;gitlab-host&gt;/groups/acme/verticals/payments/-/settings/ci_cd#js-cicd-variables-settings</code></li>
+  <li>Project-level variable on service-a (override of same key): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd#js-cicd-variables-settings</code></li>
+  <li>service-b job log (still reads inherited group value): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-b/-/pipelines</code></li>
+  <li>Sibling identity group variables (not visible to payments jobs): <code>https://&lt;gitlab-host&gt;/groups/acme/verticals/identity/-/settings/ci_cd#js-cicd-variables-settings</code></li>
+</ul>
+</div>
+
+<h3>13.9 Scenario I — Environment-Scoped Variables</h3>
+
+<p>Two variables with the same key <code>API_KEY</code> were created in <code>service-a</code>, one scoped to the <code>staging</code> environment with a staging value, and one scoped to <code>prod</code> with a prod value (protected). The deploy_staging job read the staging value, and the deploy_prod job (when run by Carol with Bob's approval on a protected tag) read the prod value. A job with no environment declaration saw neither.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> Environment-scoped variables were cleanly partitioned by environment name. The same variable key can safely carry different values across environments without risk of cross-leakage.
+</div>
+
+<div class="verify-ui">
+<strong>Verify in UI:</strong>
+<ul>
+  <li>service-a CI/CD variables (two API_KEY entries with different env scopes): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/settings/ci_cd#js-cicd-variables-settings</code></li>
+  <li>Latest pipeline (deploy_staging vs deploy_prod logs show different API_KEY): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/pipelines</code></li>
+  <li>Environments page (staging + prod): <code>https://&lt;gitlab-host&gt;/acme/verticals/payments/service-a/-/environments</code></li>
+</ul>
+</div>
+
+<hr>
+
+<h2>14. Success Criteria — Results</h2>
+
+<p>Each success criterion was verified with screenshot evidence captured during execution. All 25 criteria passed.</p>
+
+<table>
+<thead><tr><th>#</th><th>Criterion</th><th>Result</th><th>Evidence in</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Group hierarchy supports platform/verticals separation</td><td>Pass</td><td>Part 1</td></tr>
+<tr><td>2</td><td>Developer can push feature branches but not to main</td><td>Pass</td><td>Part 4</td></tr>
+<tr><td>3</td><td>Maintainer can merge; Developer cannot</td><td>Pass</td><td>Part 4</td></tr>
+<tr><td>4</td><td>Author cannot self-approve their own MR</td><td>Pass</td><td>Part 4</td></tr>
+<tr><td>5</td><td>Required approvals block merge when unmet</td><td>Pass</td><td>Part 4</td></tr>
+<tr><td>6</td><td>Only authorized users can deploy to prod</td><td>Pass</td><td>Part 5</td></tr>
+<tr><td>7</td><td>Prod deploys require approval (two-person rule)</td><td>Pass</td><td>Part 5</td></tr>
+<tr><td>8</td><td>Only authorized users can create release tags</td><td>Pass</td><td>Part 6</td></tr>
+<tr><td>9</td><td>Outsiders can contribute via fork+MR without write access</td><td>Pass</td><td>Part 7</td></tr>
+<tr><td>10</td><td>Access inherits down the hierarchy; siblings are isolated</td><td>Pass</td><td>Part 8</td></tr>
+<tr><td>11</td><td>Access can be raised lower in the tree, not lowered</td><td>Pass</td><td>Part 8</td></tr>
+<tr><td>12</td><td>Audit log captures significant actions</td><td>Pass</td><td>Part 9</td></tr>
+<tr><td>13</td><td>Protected CI variables do not leak to feature branch pipelines</td><td>Pass</td><td>Scenario A</td></tr>
+<tr><td>14</td><td>Environment-scoped variables only exposed in matching environment jobs</td><td>Pass</td><td>Scenarios A, I</td></tr>
+<tr><td>15</td><td>Only authorized users can trigger manual deploy jobs to protected environments</td><td>Pass</td><td>Scenario B</td></tr>
+<tr><td>16</td><td>Manual jobs without environment are role-gated, not user-specific</td><td>Pass</td><td>Scenario B</td></tr>
+<tr><td>17</td><td>Fork pipelines cannot read protected variables even with approval</td><td>Pass</td><td>Scenario C</td></tr>
+<tr><td>18</td><td>External contributors cannot view CI variable values</td><td>Pass</td><td>Scenario C</td></tr>
+<tr><td>19</td><td>CI_JOB_TOKEN cross-project access requires explicit allowlist</td><td>Pass</td><td>Scenario D</td></tr>
+<tr><td>20</td><td>Group-scoped runners do not pick up jobs from sibling groups</td><td>Pass</td><td>Scenario E</td></tr>
+<tr><td>21</td><td>Protected runners only run on protected refs</td><td>Pass</td><td>Scenario E</td></tr>
+<tr><td>22</td><td>Developers cannot view/edit CI variables, protected branches, or add runners</td><td>Pass</td><td>Scenario F</td></tr>
+<tr><td>23</td><td>Scheduled pipelines run as their owner and inherit current permissions</td><td>Pass</td><td>Scenario G</td></tr>
+<tr><td>24</td><td>Group-level variables inherit down; project variables override</td><td>Pass</td><td>Scenario H</td></tr>
+<tr><td>25</td><td>Variables do not cross sibling group boundaries</td><td>Pass</td><td>Scenario H</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2>15. Observations and Gaps</h2>
+
+<p>Several observations emerged during execution that are worth recording for the broader rollout:</p>
+
+<ul>
+  <li>Manual jobs without environment declarations fall back to role-level gating. Any CI pipeline that expects a specific user or team to trigger a deployment must declare an environment. This is a configuration convention that should be documented for all teams.</li>
+  <li>The visibility inheritance constraint (child cannot be more visible than parent) required planning when enabling inner source. Verticals intended to host inner-source projects must themselves be at Internal visibility, which affects discovery posture for the whole vertical.</li>
+  <li>Scheduled pipeline ownership is a long-lived attachment to an individual. In the absence of service accounts, schedules must have their ownership transferred whenever a Maintainer's role changes or they leave.</li>
+  <li>The default CI_JOB_TOKEN allowlist on newly created projects is appropriately restrictive. Older projects (pre-16.x) may need migration to the stricter defaults.</li>
+  <li>The Protect flag on variables and the environment scope on variables operate independently — both must be correctly set for true production-secret isolation. Documentation should emphasize this combination.</li>
+  <li>No integration with an identity provider was tested in this PoC. Manual user invitation was used throughout. The next PoC phase should validate that SAML Group Sync preserves these access behaviors when role assignments originate from IdP groups rather than direct invitation.</li>
+</ul>
+
+<hr>
+
+<h2>16. Recommendation</h2>
+
+<div class="callout-success">
+<strong>Go.</strong> All 25 success criteria passed. The GitLab access model, as designed, enforces the intended separation of duties across repository operations, CI/CD pipeline execution, and inner-source contribution. The model is ready for broader rollout.
+</div>
+
+<p>Recommended next steps:</p>
+
+<ol>
+  <li>Adopt the role model and hierarchy patterns validated in this PoC as the standard for all new verticals and projects.</li>
+  <li>Plan a follow-up PoC to validate SSO / SCIM / SAML Group Sync on the same hierarchy, using IdP-driven membership instead of manual invitation.</li>
+  <li>Plan a compliance framework PoC to add mandatory CI jobs (SAST, secret detection, dependency scanning) on top of the validated access model.</li>
+  <li>Publish a short operations guide capturing the conventions discovered during this PoC (environment declarations on manual jobs, schedule ownership, variable configuration patterns, visibility inheritance).</li>
+</ol>
+
+<hr>
+
+<p><em>End of report.</em></p>
+
+</body>
+</html>

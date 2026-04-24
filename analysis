@@ -1,0 +1,307 @@
+GitLab Role
+
+	GitLab Role Type	GitLab Level	Permissions	Mapping ASIS	Mapping TOBE
+
+	Minimal Access	Default	Top Level Group	
+read only user for non protected repos 
+	devhat_w	P2P_GS_DevOps_<>_MinimalAccess
+
+	Guest	Default	N.A.	
+read user within group 
+	N.A. (related to Jira)	N.A.
+
+	Planner	Default	N.A.	
+	N.A. (related to Jira)	N.A.
+
+	Reporter	Default	Project	
+	<app>_r	
+
+P2P_GS_DevOps_<group-name>_Reporter
+
+<app>_r
+
+
+GS Partner	Security Manager	Default	Group	
+permissions on merge policies to protected branches ?
+waiver roles for security vulnerabilities ?
+	P2P_GS_CDRO_GSPartner	P2P_GS_DevOps_<group-name>_SecurityManager
+Developer	Developer	Default	Project	
+can't commit to non protected branches ?
+	<app>_w	
+
+P2P_GS_DevOps_<group-name>_Developer
+
+<app>_w
+
+
+Promoter	Promoter	Custom	Group	
+	P2P_GS_CDRO_<cdro-project-name>_Promoter	P2P_GS_DevOps_<group-name>_Promoter
+Operator	Operator	Custom	Group	
+The operator access needs to customized in specific to specific branches & pipeline that are prod type (e.g prod)
+	P2P_GS_CDRO_<cdro-project-name>_Operator	P2P_GS_DevOps_<group-name>_Operator
+Maintainer	Maintainer	Default	Group	
+can commit or merge to protected branches
+disable project settings like merge policies etc (we need to decide how to not allow this )
+	P2P_GS_Bitbucket_Admin	P2P_GS_DevOps_<group-name>_Maintainer 
+Owner	Owner	Deafult	Top Level Group	
+	P2P_GS_Bitbucket_Admin	P2P_GS_DevOps_Owner
+Purpose
+
+This document defines the reference access model for GitLab, including its integration with LDAP and IAM.
+
+The objective is to establish a scalable, auditable, and GitLab‑native authorization model that:
+
+supports inner sourcing by default,
+aligns with enterprise IAM governance,
+and remains pragmatic and adoptable during transition from Bitbucket.
+
+This document intentionally presents two authorization approaches:
+
+a transition approach enabling fast, low‑risk onboarding,
+and a target approach fully leveraging GitLab’s group‑centric capabilities.
+
+Both approaches are governed by the same core principles and are part of a single evolution path, not competing models.
+
+Core Authorization Principles
+
+The following principles apply universally, regardless of the chosen approach:
+
+Group‑centric authorization
+
+Access is granted to groups, never directly to individuals
+GitLab groups are the primary structuring mechanism
+
+LDAP as the source of truth
+
+Identity and group membership are defined externally
+GitLab enforces access but does not manage identity lifecycle
+
+Least privilege by design
+
+Developer is the default write role
+Elevated roles (Maintainer, Owner) are restricted and intentional
+
+Separation of concerns
+
+Identity → LDAP / IAM
+Structure → GitLab groups and subgroups
+Authorization → GitLab roles
+Control → branch protection, approvals, CODEOWNERS
+
+Inner sourcing by default
+
+Unless explicitly classified as confidential, source code is readable by authenticated users
+
+Scalability and auditability
+
+The model must support large repository estates
+Access reviews must be predictable, reviewable, and automatable
+Why Two Approaches Are Defined
+
+GitLab offers a group‑centric, inheritance‑driven authorization model, which is the target state.
+However, existing Bitbucket usage relies heavily on repository‑level access groups, which cannot be transformed instantly without introducing migration risk.
+
+This document therefore defines:
+
+Approach 1 as a controlled transition model, accepting temporary compromises to enable progress
+Approach 2 as the long‑term target model, once ownership, grouping, and ecosystem integration are stable
+
+The intent is not to choose one and discard the other, but to:
+
+onboard safely,
+standardize progressively,
+and converge on a single, robust authorization model.
+
+As stated in the original Access Model & LDAP Integration document, the move to GitLab should:
+
+avoid a pure repository‑level permission translation from Bitbucket,
+support inner sourcing by default,
+remain operationally feasible during migration.
+
+To achieve this, two authorization approaches are defined:
+
+Approach 1 – a pragmatic, low‑disruption transition model
+Approach 2 – a fully group‑centric target model
+Shared Principles (Both Approaches)
+Authorization is group‑based, not user‑based
+LDAP is the source of truth
+GitLab enforces access and controls (branch protection, approvals, CODEOWNERS)
+Least privilege by default
+Inner sourcing unless confidentiality requires restriction
+
+The difference is where structure is introduced and how IAM groups are managed.
+
+Approach 1 – Hybrid Transition Model (Starting Point)
+What it is
+
+A low‑risk onboarding model that preserves existing Bitbucket access groups while introducing minimal GitLab grouping for visibility, ownership, and future evolution.
+
+This approach is explicitly temporary.
+
+Visual – How It Looks in GitLab
+Top-Level Group (Owner: P2P)
+├── business-unit-1/
+│   ├── domain-1/ (optional product group)
+│       ├── app-1
+│       ├── app-2
+│       └── app-3
+│   └── restricted/
+│       └── app-4
+├── does/
+│   ├── dice/ (Maintainer: P2P)
+│       ├── app-1-playbook (Developer: dev-app-1-playbook)
+│       ├── app-2-playbook
+│       └── app-3-playbook
+│   ├── oasis/ (Maintainer: P2P)
+│       └── app-4-playbook (Developer: dev-app-4-playbook)
+│   └── restricted/
+
+Identity & Access Management
+SSCAM (temporary, project-level)
+├── payments-api_w / _r
+├── payments-ui_w / _r
+└── payments-batch_w / _r
+
+SailPoint (stable, group-level)
+├── gl-restricted-read
+└── gl-payments-dev   (optional)
+
+
+Access mapping
+
+_w → Developer (project level)
+_r → Reporter (project level)
+gl-restricted-read → Reporter (group level)
+gl-<product>-dev → Developer (group level)
+Key Characteristics
+Existing Bitbucket _r / _w LDAP groups are reused
+Inner sourcing enabled via Restricted groups
+Confidential projects have no inherited access
+Projects may optionally be grouped with a defined Owner
+Hybrid IAM: SSCAM + SailPoint
+Consequences (Accepted)
+
+✅ Fast migration
+✅ Minimal disruption
+✅ Immediate inner sourcing
+
+⚠ Hybrid LDAP management
+⚠ Partial GitLab inheritance usage
+⚠ Not a final state
+
+Approach 2 – Domain / Product‑Line Group‑Centric Model (Target State)
+What it is
+
+A fully GitLab‑native authorization model where access is structured around stable application domains or product lines, not individual repositories.
+
+Visual – How It Looks in GitLab
+GitLab
+└── payments/                     (domain / product line)
+    ├── api/
+    │   ├── payments-api
+    │   └── payments-batch
+    ├── ui/
+    │   └── payments-ui
+    └── confidential/
+        └── payments-secrets
+
+Identity & Access Management
+SailPoint (single IAM system)
+├── gl-payments-read
+├── gl-payments-dev
+├── gl-payments-maint
+└── gl-payments-owner
+
+
+All access is assigned at GitLab group level and inherited
+
+Key Characteristics
+Domains defined using LeanIX, CI/controller grouping, ownership analysis
+GitLab groups represent long‑lived responsibilities
+SSH / CI / approval policies enforced once at group level
+Single IAM model (SailPoint only)
+Project‑specific groups largely eliminated
+Consequences (Known)
+
+✅ Strong governance & auditability
+✅ Excellent scalability
+✅ Full GitLab inheritance model
+
+⚠ Upfront analysis required
+⚠ Breaks direct _r / _w mapping
+⚠ CI/CD ecosystem integration impacts
+⚠ Higher transition effort
+
+Side‑by‑Side Comparison
+Dimension	Approach 1 – Hybrid	Approach 2 – Domain
+Intended role	Transition	Target
+Migration disruption	Low	High
+Reuse Bitbucket groups	Yes	No
+IAM systems	SSCAM + SailPoint	SailPoint only
+GitLab inheritance	Partial	Full
+Inner sourcing	Yes	Yes
+Governance strength	Medium	High
+Ecosystem impact	Low	High
+Recommended Evolution Path
+Onboard all projects using Approach 1
+Introduce grouping and ownership incrementally
+Validate domain structures and ownership
+Migrate selected domains to Approach 2
+Decommission project‑level _r / _w groups
+
+Approach 1 enables progress without blocking.
+Approach 2 is the destination once structure and ecosystem maturity are in place.
+
+
+
+
+GitLab Grouping Criteria and Structure
+Criteria for grouping applications
+
+GitLab groups should be defined using stable application characteristics, not organisational ownership. The following criteria are recommended:
+
+Deployment & exposure model (primary criterion)
+
+Where the application is deployed
+Live - Cloud Landing Zone
+Live - Cloud SaaS
+Live - Customer Premises
+Live - Production
+Live - Enterprise
+Live - Public Web - SdC
+Non-live - Cloud Landing Zone
+Non-live - Enterprise
+Who can access it
+Examples: internal‑only, production network, customer‑deployed
+
+Security and risk profile
+
+Web‑facing vs non web‑facing
+Deployment in restricted zones (e.g. pseudo‑com)
+Need for additional security or approval controls
+
+Compliance and reporting needs
+
+Ability to report on all production apps
+Ability to report on customer‑deployed software
+Ability to scope audits and controls consistently
+
+These criteria reflect what an application is, not who owns it, and therefore remain valid across organisational reworks.
+
+Why grouping this way
+Durability: deployment model and exposure change rarely, while teams change frequently
+Policy inheritance: security, SoD, and CI/CD controls can be enforced once at group level
+Auditability: enables native GitLab reporting without tags or manual classification
+Consistency: avoids per‑project exceptions and configuration drift
+
+This turns GitLab groups into a governance and control structure, not just a folder hierarchy.
+
+
+
+
+References
+GitLab DevOps Platform High Level Design - Path-to-Production Services - Confluence
+Build Hosts - Path-to-Production Services - Confluence
+https://docs.gitlab.com/user/permissions/
+Common Group models in GitLab: https://docs.gitlab.com/user/group/#group-structure
+An article about a common strategy: https://about.gitlab.com/blog/best-practices-to-set-up-organizational-hierarchies-that-scale/

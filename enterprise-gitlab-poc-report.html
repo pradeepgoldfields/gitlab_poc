@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Enterprise GitLab Access Model PoC — Report</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; max-width: 960px; margin: 2em auto; padding: 0 1.5em; color: #000000; background: #ffffff; line-height: 1.6; }
+  h1 { font-size: 2em; border-bottom: 2px solid #0052cc; padding-bottom: 0.3em; }
+  h2 { font-size: 1.4em; margin-top: 2em; border-bottom: 1px solid #dfe1e6; padding-bottom: 0.2em; }
+  h3 { font-size: 1.15em; margin-top: 1.5em; color: #000000; }
+  h4 { font-size: 1.02em; margin-top: 1.2em; color: #000000; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  th, td { border: 1px solid #dfe1e6; padding: 0.5em 0.75em; text-align: left; vertical-align: top; }
+  th { background: #f4f5f7; font-weight: 600; }
+  pre { background: #f4f5f7; border: 1px solid #dfe1e6; border-radius: 3px; padding: 0.75em 1em; overflow-x: auto; font-size: 0.9em; }
+  code { background: #f4f5f7; padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.9em; }
+  pre code { background: none; padding: 0; }
+  .callout-info { border-left: 4px solid #0052cc; background: #deebff; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-warn { border-left: 4px solid #ff991f; background: #fffae6; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-success { border-left: 4px solid #00875a; background: #e3fcef; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-danger { border-left: 4px solid #de350b; background: #ffebe6; padding: 0.75em 1em; margin: 1em 0; }
+  .scenario { background: #f4f5f7; border-left: 4px solid #0052cc; padding: 0.75em 1em; margin: 1em 0; border-radius: 3px; }
+  .outcome { background: #e3fcef; border-left: 4px solid #00875a; padding: 0.5em 1em; margin: 0.5em 0 1em 0; border-radius: 3px; }
+  ul, ol { padding-left: 1.5em; }
+  li { margin: 0.3em 0; }
+  .diagram { text-align: center; margin: 1.5em 0; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .caption { font-size: 0.9em; color: #42526e; margin-top: 0.4em; font-style: italic; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>Enterprise GitLab Access Model PoC — Report</h1>
+
+<p><strong>Purpose:</strong> This report documents the Proof of Concept executed to validate the enterprise GitLab access model as defined in the reference design. The PoC covers both authorization approaches (Approach 1 — hybrid transition, and Approach 2 — domain/product-line group-centric), the migration scenario between them, and the three custom roles introduced by the design (Promoter, Operator, Security Manager).</p>
+
+<p><strong>Audience:</strong> P2P platform engineering, DevOps leadership, security architects, IAM owners, and anyone reviewing the PoC results ahead of GitLab onboarding.</p>
+
+<p><strong>Scope covered:</strong> Deployment-model group hierarchy, role model including the three custom roles, Approach 1 (hybrid) authorization pattern, Approach 2 (target) authorization pattern, migration between approaches, inner sourcing via visibility inheritance, confidential project handling via <code>restricted/</code> subgroups, policy inheritance at the deployment-zone level, and CI/CD access scenarios.</p>
+
+<p><strong>Out of scope for this PoC:</strong> Live LDAP / SSCAM / SailPoint integration (simulated via manually-created GitLab groups using the design's naming conventions); live production applications; compliance framework integration; SIEM streaming. A follow-up phase is planned to validate the LDAP bindings against the SailPoint and SSCAM systems.</p>
+
+<hr>
+
+<h2>Table of Contents</h2>
+<ol>
+  <li>Summary of Outcomes</li>
+  <li>How LDAP Was Simulated</li>
+  <li>Environment and Participants</li>
+  <li>Part A — Hierarchy Construction (Deployment-Model Grouping)</li>
+  <li>Part B — Role Model and Custom Role Creation</li>
+  <li>Part C — Approach 1 Validation (Hybrid Transition)</li>
+  <li>Part D — Approach 2 Validation (Target Group-Centric)</li>
+  <li>Part E — Migration from Approach 1 to Approach 2</li>
+  <li>Part F — Custom Role Behavior (Promoter, Operator, Security Manager)</li>
+  <li>Part G — Inner Sourcing and Confidential Handling</li>
+  <li>Part H — Policy Inheritance at the Deployment-Zone Level</li>
+  <li>Part I — CI/CD Access Scenarios</li>
+  <li>Success Criteria — Results</li>
+  <li>Observations and Gaps</li>
+  <li>Recommendation and Next Steps</li>
+</ol>
+
+<hr>
+
+<h2>1. Summary of Outcomes</h2>
+
+<p>The PoC validated the enterprise GitLab access model against the design principles of the reference document. Both approaches functioned as specified. Approach 1 (hybrid) was shown to be a viable low-disruption onboarding model that reuses the Bitbucket-style <code>_w</code> / <code>_r</code> group conventions. Approach 2 (target) was shown to deliver the stronger governance and inheritance benefits promised by the design, with access granted once at the domain level and inherited across all projects.</p>
+
+<p>The migration path from Approach 1 to Approach 2 was executed on a representative application without causing access outages. The three custom roles (Promoter, Operator, Security Manager) were created as GitLab Custom Roles and their behaviors validated against the intended use cases described in the design. Deployment-zone-level policy inheritance was confirmed as the key enabler of the design's "policy enforced once at group level" principle.</p>
+
+<p>All 32 defined success criteria passed. The access model is ready for adoption, with specific operational guidance captured in the Observations section.</p>
+
+<hr>
+
+<h2>2. How LDAP Was Simulated</h2>
+
+<p>Live LDAP integration (SSCAM, SailPoint, and the P2P group management systems) was out of scope for this PoC. To validate the design's structural and authorization logic independently of the IAM system, LDAP groups were simulated as manually-created GitLab groups using the exact naming conventions from the reference design.</p>
+
+<p>In a production deployment these names would resolve to LDAP / SailPoint / SSCAM groups bound to GitLab via LDAP Group Sync. For the PoC, each "LDAP group" was represented as a GitLab subgroup whose members were manually managed. Role assignments were then configured by sharing these IAM-style groups with the target GitLab groups at the appropriate role — exactly the pattern that LDAP Group Sync would produce.</p>
+
+<table>
+<thead><tr><th>Design convention</th><th>PoC simulation</th></tr></thead>
+<tbody>
+<tr><td>SSCAM project-level groups (e.g., <code>payments-api_w</code>, <code>payments-api_r</code>)</td><td>GitLab groups created under <code>acme/iam-sim/sscam/</code> with the same names; shared with target project at Developer/Reporter role</td></tr>
+<tr><td>SailPoint group-level groups (e.g., <code>gl-payments-dev</code>, <code>gl-payments-maint</code>)</td><td>GitLab groups created under <code>acme/iam-sim/sailpoint/</code>; shared with target GitLab group at the appropriate role</td></tr>
+<tr><td>Deployment-zone read groups (e.g., <code>gl-restricted-read</code>)</td><td>GitLab group <code>acme/iam-sim/sailpoint/gl-restricted-read</code>; shared with <code>restricted/</code> subgroups at Reporter role</td></tr>
+<tr><td>P2P DevOps role groups (e.g., <code>P2P_GS_DevOps_<group>_Developer</code>)</td><td>GitLab groups created under <code>acme/iam-sim/p2p/</code> matching the design's ASIS and TOBE naming</td></tr>
+</tbody>
+</table>
+
+<div class="callout-info">
+<strong>Limitation:</strong> This PoC does not validate that the actual LDAP binding, group sync latency, deprovisioning, or lifecycle events behave correctly. A follow-up PoC is required with real SailPoint and SSCAM integration before production rollout.
+</div>
+
+<hr>
+
+<h2>3. Environment and Participants</h2>
+
+<p>The PoC was executed on the self-managed GitLab instance under a dedicated top-level sandbox group. Access to the sandbox was restricted to the PoC operator at Owner level; all other test personas were simulated via additional test accounts.</p>
+
+<table>
+<thead><tr><th>Test user</th><th>Persona simulated</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Alice</td><td>Developer</td><td>Member of <code>payments-api_w</code> (Approach 1) and <code>gl-payments-dev</code> (Approach 2)</td></tr>
+<tr><td>Bob</td><td>Maintainer / tech lead</td><td>Member of <code>P2P_GS_DevOps_payments_Maintainer</code></td></tr>
+<tr><td>Carol</td><td>Operator (SRE / release)</td><td>Member of <code>P2P_GS_DevOps_payments_Operator</code>; targeted for prod branch and prod pipeline scope</td></tr>
+<tr><td>Paul</td><td>Promoter</td><td>Member of <code>P2P_GS_DevOps_payments_Promoter</code>; triggers promotion pipelines</td></tr>
+<tr><td>Sam</td><td>Security Manager</td><td>Member of <code>P2P_GS_DevOps_payments_SecurityManager</code>; manages waivers and merge policies</td></tr>
+<tr><td>Rita</td><td>Reporter</td><td>Member of <code>payments-api_r</code> (Approach 1) and <code>gl-payments-read</code> (Approach 2)</td></tr>
+<tr><td>Dan</td><td>Inner-source contributor</td><td>Minimal access at top-level; contributes via fork</td></tr>
+<tr><td>Con</td><td>Confidential reader</td><td>Member of <code>gl-restricted-read</code>; access to restricted projects only</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2>4. Part A — Hierarchy Construction (Deployment-Model Grouping)</h2>
+
+<p>The hierarchy was built according to the design's primary criterion: grouping by deployment and exposure model, not by organizational team. The top-level group <code>acme</code> was created with Owner restricted to P2P administrators. Beneath it, subgroups were created for each deployment zone listed in the design. Each zone contains product/domain subgroups, and each product subgroup may contain a <code>restricted/</code> subgroup for confidential projects.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 920 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Deployment-zone hierarchy">
+  <style>
+    .top { fill: #deebff; stroke: #0052cc; stroke-width: 1.5; }
+    .zone { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .domain { fill: #fff4e5; stroke: #ff991f; stroke-width: 1.5; }
+    .restricted { fill: #ffebe6; stroke: #de350b; stroke-width: 1.5; }
+    .proj { fill: #fff; stroke: #42526e; stroke-width: 1; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #42526e; text-anchor: middle; }
+    .line { stroke: #6b778c; stroke-width: 1.2; fill: none; }
+  </style>
+
+  <!-- Top -->
+  <rect x="380" y="15" width="160" height="44" rx="6" class="top"/>
+  <text x="460" y="38" class="lbl">acme (top-level)</text>
+  <text x="460" y="52" class="lbl-small">Owner: P2P admins only</text>
+
+  <!-- Branch down -->
+  <path d="M 460 59 L 460 80 L 120 80" class="line"/>
+  <path d="M 460 80 L 800 80" class="line"/>
+  <path d="M 120 80 L 120 110" class="line"/>
+  <path d="M 320 80 L 320 110" class="line"/>
+  <path d="M 520 80 L 520 110" class="line"/>
+  <path d="M 720 80 L 720 110" class="line"/>
+  <path d="M 800 80 L 800 110" class="line"/>
+
+  <!-- Zones -->
+  <rect x="30" y="110" width="180" height="38" rx="6" class="zone"/>
+  <text x="120" y="134" class="lbl">live-production</text>
+
+  <rect x="230" y="110" width="180" height="38" rx="6" class="zone"/>
+  <text x="320" y="128" class="lbl">live-cloud-landing-zone</text>
+  <text x="320" y="142" class="lbl-small">(and other live-* zones)</text>
+
+  <rect x="430" y="110" width="180" height="38" rx="6" class="zone"/>
+  <text x="520" y="128" class="lbl">live-customer-premises</text>
+
+  <rect x="630" y="110" width="180" height="38" rx="6" class="zone"/>
+  <text x="720" y="128" class="lbl">non-live-enterprise</text>
+
+  <rect x="700" y="155" width="180" height="38" rx="6" class="zone"/>
+  <text x="790" y="173" class="lbl">... other non-live zones</text>
+  <text x="790" y="187" class="lbl-small">(truncated for clarity)</text>
+
+  <!-- Expand live-production -->
+  <path d="M 120 148 L 120 170 L 80 170 L 80 200" class="line"/>
+  <path d="M 120 170 L 200 170 L 200 200" class="line"/>
+
+  <rect x="10" y="200" width="140" height="44" rx="6" class="domain"/>
+  <text x="80" y="220" class="lbl">payments/</text>
+  <text x="80" y="236" class="lbl-small">(domain)</text>
+
+  <rect x="160" y="200" width="140" height="44" rx="6" class="domain"/>
+  <text x="230" y="220" class="lbl">trade/</text>
+  <text x="230" y="236" class="lbl-small">(domain)</text>
+
+  <!-- payments children -->
+  <path d="M 80 244 L 80 280 L 30 280 L 30 310" class="line"/>
+  <path d="M 80 280 L 120 280 L 120 310" class="line"/>
+  <path d="M 80 280 L 200 280 L 200 310" class="line"/>
+
+  <rect x="-10" y="310" width="80" height="38" rx="6" class="proj"/>
+  <text x="30" y="333" class="lbl">api</text>
+
+  <rect x="80" y="310" width="80" height="38" rx="6" class="proj"/>
+  <text x="120" y="333" class="lbl">ui</text>
+
+  <rect x="170" y="310" width="80" height="38" rx="6" class="proj"/>
+  <text x="210" y="333" class="lbl">batch</text>
+
+  <!-- restricted -->
+  <path d="M 80 244 L 80 370 L 30 370 L 30 400" class="line"/>
+  <rect x="-10" y="400" width="180" height="44" rx="6" class="restricted"/>
+  <text x="80" y="420" class="lbl">restricted/</text>
+  <text x="80" y="436" class="lbl-small">(confidential)</text>
+
+  <path d="M 80 444 L 80 470 L 80 490" class="line"/>
+  <rect x="20" y="490" width="140" height="38" rx="6" class="proj"/>
+  <text x="90" y="513" class="lbl">payments-secrets</text>
+
+  <!-- IAM sim box -->
+  <rect x="560" y="300" width="330" height="170" rx="6" fill="#f4f5f7" stroke="#6b778c" stroke-width="1"/>
+  <text x="725" y="322" class="lbl" style="font-weight:600">IAM Simulation area</text>
+  <text x="725" y="342" class="lbl-small">acme/iam-sim/</text>
+  <text x="725" y="362" class="lbl-small">├── sscam/   (Approach 1 groups)</text>
+  <text x="725" y="378" class="lbl-small">│    ├── payments-api_w</text>
+  <text x="725" y="394" class="lbl-small">│    └── payments-api_r</text>
+  <text x="725" y="414" class="lbl-small">├── sailpoint/   (Approach 2 groups)</text>
+  <text x="725" y="430" class="lbl-small">│    ├── gl-payments-dev</text>
+  <text x="725" y="446" class="lbl-small">│    └── gl-restricted-read</text>
+  <text x="725" y="462" class="lbl-small">└── p2p/   (P2P DevOps groups)</text>
+</svg>
+<div class="caption">Figure 1 — The deployment-model hierarchy constructed for the PoC. Domains live within deployment zones; confidential projects live in zone-scoped <code>restricted/</code> subgroups. The IAM simulation area holds the manually-managed groups representing SSCAM, SailPoint, and P2P LDAP groups.</div>
+</div>
+
+<p>Three deployment zones were fully populated for the PoC: <code>live-production</code>, <code>live-cloud-landing-zone</code>, and <code>non-live-enterprise</code>. The <code>payments</code> domain was created under <code>live-production</code> with three projects (<code>api</code>, <code>ui</code>, <code>batch</code>) plus a <code>restricted/</code> subgroup containing <code>payments-secrets</code>. This mirrors the example in the design document.</p>
+
+<p>Visibility was set deliberately:</p>
+
+<ul>
+  <li>Top-level <code>acme</code> — Internal (enables inner sourcing across the organisation).</li>
+  <li>Each deployment zone — Internal (inherits downward).</li>
+  <li>Each domain — Internal (inner-source by default).</li>
+  <li><code>restricted/</code> subgroups — Private (overrides the Internal inheritance so confidential projects are invisible to non-members).</li>
+  <li><code>iam-sim/</code> — Private (container for simulated IAM groups, not intended for general visibility).</li>
+</ul>
+
+<div class="outcome">
+<strong>Outcome:</strong> The hierarchy was constructed cleanly using the deployment-model grouping criterion. Visibility inheritance behaved as required: inner sourcing was enabled throughout, and confidential projects in <code>restricted/</code> subgroups were invisible to users outside their explicit membership.
+</div>
+
+<hr>
+
+<h2>5. Part B — Role Model and Custom Role Creation</h2>
+
+<p>The design specifies eight roles: five built-in (Reporter, Developer, Maintainer, Owner, Minimal Access) and three custom (Promoter, Operator, Security Manager). The built-in roles were used as-is. The three custom roles were created via <code>Admin Area → Custom Roles</code> with the ability bundles shown below.</p>
+
+<h3>5.1 Custom Role Definitions</h3>
+
+<table>
+<thead><tr><th>Custom role</th><th>Base role</th><th>Additional abilities</th><th>Abilities deliberately NOT granted</th></tr></thead>
+<tbody>
+<tr><td><strong>Promoter</strong></td><td>Reporter</td><td><code>admin_cicd_variables</code> (for promotion pipeline parameters), <code>admin_pipeline</code> (trigger promotion jobs)</td><td><code>push_code</code>, <code>admin_project</code>, <code>merge_merge_request</code></td></tr>
+<tr><td><strong>Operator</strong></td><td>Reporter</td><td><code>admin_pipeline</code>, <code>admin_environment</code>, <code>admin_cicd_variables</code></td><td><code>push_code</code>, <code>admin_project</code>, <code>merge_merge_request</code>. Further restricted to prod via protected environment/branch user lists (see Part F.2).</td></tr>
+<tr><td><strong>Security Manager</strong></td><td>Reporter</td><td><code>read_vulnerability</code>, <code>admin_vulnerability</code> (waivers), <code>approve_merge_request</code></td><td><code>push_code</code>, <code>admin_project</code>, <code>merge_merge_request</code></td></tr>
+</tbody>
+</table>
+
+<div class="callout-info">
+<strong>Design nuance:</strong> GitLab Custom Roles do not support branch-level or environment-level granularity. The design requirement that "Operator access needs to be customised to specific branches and pipelines that are prod type" cannot be expressed in the Custom Role alone. The PoC therefore combines the Operator custom role with protected environment restrictions (allowed-to-deploy limited to the Operator user list) and protected branch rules. This two-layer approach is documented in Part F.2.
+</div>
+
+<h3>5.2 Role-to-IAM-Group Mapping</h3>
+
+<div class="diagram">
+<svg viewBox="0 0 920 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Role to IAM group mapping">
+  <style>
+    .role { fill: #fff; stroke: #0052cc; stroke-width: 1.5; }
+    .role-c { fill: #fff; stroke: #de350b; stroke-width: 1.5; }
+    .asis { fill: #fffae6; stroke: #ff991f; stroke-width: 1.2; }
+    .tobe { fill: #e3fcef; stroke: #00875a; stroke-width: 1.2; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #42526e; text-anchor: middle; }
+    .hdr { font-family: -apple-system, Arial, sans-serif; font-size: 13px; fill: #000; text-anchor: middle; font-weight: 600; }
+  </style>
+
+  <text x="110" y="25" class="hdr">GitLab Role</text>
+  <text x="430" y="25" class="hdr">ASIS LDAP (Bitbucket era)</text>
+  <text x="760" y="25" class="hdr">TOBE LDAP (GitLab target)</text>
+
+  <!-- Minimal Access -->
+  <rect x="30" y="40" width="160" height="34" rx="5" class="role"/>
+  <text x="110" y="61" class="lbl">Minimal Access</text>
+  <rect x="290" y="40" width="260" height="34" rx="5" class="asis"/>
+  <text x="420" y="61" class="lbl-small">devhat_w</text>
+  <rect x="600" y="40" width="300" height="34" rx="5" class="tobe"/>
+  <text x="750" y="61" class="lbl-small">P2P_GS_DevOps_&lt;&gt;_MinimalAccess</text>
+
+  <!-- Reporter -->
+  <rect x="30" y="80" width="160" height="34" rx="5" class="role"/>
+  <text x="110" y="101" class="lbl">Reporter</text>
+  <rect x="290" y="80" width="260" height="34" rx="5" class="asis"/>
+  <text x="420" y="101" class="lbl-small">&lt;app&gt;_r</text>
+  <rect x="600" y="80" width="300" height="34" rx="5" class="tobe"/>
+  <text x="750" y="96" class="lbl-small">P2P_GS_DevOps_&lt;group&gt;_Reporter</text>
+  <text x="750" y="109" class="lbl-small">and &lt;app&gt;_r</text>
+
+  <!-- Developer -->
+  <rect x="30" y="120" width="160" height="34" rx="5" class="role"/>
+  <text x="110" y="141" class="lbl">Developer</text>
+  <rect x="290" y="120" width="260" height="34" rx="5" class="asis"/>
+  <text x="420" y="141" class="lbl-small">&lt;app&gt;_w</text>
+  <rect x="600" y="120" width="300" height="34" rx="5" class="tobe"/>
+  <text x="750" y="136" class="lbl-small">P2P_GS_DevOps_&lt;group&gt;_Developer</text>
+  <text x="750" y="149" class="lbl-small">and &lt;app&gt;_w</text>
+
+  <!-- Security Manager -->
+  <rect x="30" y="160" width="160" height="34" rx="5" class="role-c"/>
+  <text x="110" y="181" class="lbl">Security Manager</text>
+  <rect x="290" y="160" width="260" height="34" rx="5" class="asis"/>
+  <text x="420" y="181" class="lbl-small">P2P_GS_CDRO_GSPartner</text>
+  <rect x="600" y="160" width="300" height="34" rx="5" class="tobe"/>
+  <text x="750" y="181" class="lbl-small">P2P_GS_DevOps_&lt;group&gt;_SecurityManager</text>
+
+  <!-- Promoter -->
+  <rect x="30" y="200" width="160" height="34" rx="5" class="role-c"/>
+  <text x="110" y="221" class="lbl">Promoter</text>
+  <rect x="290" y="200" width="260" height="34" rx="5" class="asis"/>
+  <text x="420" y="221" class="lbl-small">P2P_GS_CDRO_&lt;cdro&gt;_Promoter</text>
+  <rect x="600" y="200" width="300" height="34" rx="5" class="tobe"/>
+  <text x="750" y="221" class="lbl-small">P2P_GS_DevOps_&lt;group&gt;_Promoter</text>
+
+  <!-- Operator -->
+  <rect x="30" y="240" width="160" height="34" rx="5" class="role-c"/>
+  <text x="110" y="261" class="lbl">Operator</text>
+  <rect x="290" y="240" width="260" height="34" rx="5" class="asis"/>
+  <text x="420" y="261" class="lbl-small">P2P_GS_CDRO_&lt;cdro&gt;_Operator</text>
+  <rect x="600" y="240" width="300" height="34" rx="5" class="tobe"/>
+  <text x="750" y="261" class="lbl-small">P2P_GS_DevOps_&lt;group&gt;_Operator</text>
+
+  <!-- Maintainer -->
+  <rect x="30" y="280" width="160" height="34" rx="5" class="role"/>
+  <text x="110" y="301" class="lbl">Maintainer</text>
+  <rect x="290" y="280" width="260" height="34" rx="5" class="asis"/>
+  <text x="420" y="301" class="lbl-small">P2P_GS_Bitbucket_Admin</text>
+  <rect x="600" y="280" width="300" height="34" rx="5" class="tobe"/>
+  <text x="750" y="301" class="lbl-small">P2P_GS_DevOps_&lt;group&gt;_Maintainer</text>
+
+  <!-- Owner -->
+  <rect x="30" y="320" width="160" height="34" rx="5" class="role"/>
+  <text x="110" y="341" class="lbl">Owner</text>
+  <rect x="290" y="320" width="260" height="34" rx="5" class="asis"/>
+  <text x="420" y="341" class="lbl-small">P2P_GS_Bitbucket_Admin</text>
+  <rect x="600" y="320" width="300" height="34" rx="5" class="tobe"/>
+  <text x="750" y="341" class="lbl-small">P2P_GS_DevOps_Owner</text>
+
+  <!-- Legend -->
+  <rect x="30" y="375" width="14" height="14" rx="2" class="role-c"/>
+  <text x="55" y="387" class="lbl-small" style="text-anchor:start">Custom role</text>
+  <rect x="150" y="375" width="14" height="14" rx="2" class="role"/>
+  <text x="175" y="387" class="lbl-small" style="text-anchor:start">Built-in role</text>
+  <rect x="270" y="375" width="14" height="14" rx="2" class="asis"/>
+  <text x="295" y="387" class="lbl-small" style="text-anchor:start">ASIS naming (current)</text>
+  <rect x="440" y="375" width="14" height="14" rx="2" class="tobe"/>
+  <text x="465" y="387" class="lbl-small" style="text-anchor:start">TOBE naming (target)</text>
+</svg>
+<div class="caption">Figure 2 — Mapping from GitLab role to ASIS and TOBE LDAP group names, reproducing the design document's role table.</div>
+</div>
+
+<div class="outcome">
+<strong>Outcome:</strong> All three custom roles were successfully created with the specified ability bundles. The role-to-IAM-group mapping matched the design's intent for both the ASIS (Bitbucket-era) and TOBE (GitLab target) naming conventions. One constraint was surfaced: branch-level granularity for the Operator role cannot be expressed in the Custom Role itself and must be enforced via protected environment / protected branch allow-lists — this is handled cleanly in Part F.2.
+</div>
+
+<hr>
+
+<h2>6. Part C — Approach 1 Validation (Hybrid Transition)</h2>
+
+<p>Approach 1 was validated on the <code>payments/api</code> project. The validation mirrored the Bitbucket-era access pattern: access granted at the project level via SSCAM <code>_w</code> / <code>_r</code> groups, with a minimal deployment-zone grouping introduced only for visibility and future migration.</p>
+
+<h3>6.1 Configuration</h3>
+
+<p>Under <code>acme/iam-sim/sscam/</code>, two groups were created to simulate the SSCAM LDAP groups:</p>
+
+<ul>
+  <li><code>payments-api_w</code> — membership: Alice</li>
+  <li><code>payments-api_r</code> — membership: Rita</li>
+</ul>
+
+<p>These groups were shared with <code>acme/live-production/payments/api</code> at Developer and Reporter respectively. The <code>restricted/</code> subgroup received a sharing of <code>gl-restricted-read</code> at Reporter. The optional product-level <code>gl-payments-dev</code> group was also shared at the <code>payments/</code> domain at Developer to represent the hybrid pattern in which some product-level grouping exists alongside project-level groups.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 820 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Approach 1 configuration">
+  <style>
+    .zone { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .domain { fill: #fff4e5; stroke: #ff991f; stroke-width: 1.5; }
+    .proj { fill: #fff; stroke: #42526e; stroke-width: 1.2; }
+    .iam { fill: #deebff; stroke: #0052cc; stroke-width: 1.2; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #42526e; text-anchor: middle; }
+    .line { stroke: #6b778c; stroke-width: 1.2; fill: none; }
+    .share { stroke: #de350b; stroke-width: 1.5; fill: none; stroke-dasharray: 5,3; marker-end: url(#red-arrow); }
+  </style>
+  <defs>
+    <marker id="red-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#de350b"/>
+    </marker>
+  </defs>
+
+  <rect x="40" y="30" width="200" height="34" rx="5" class="zone"/>
+  <text x="140" y="51" class="lbl">live-production</text>
+
+  <path d="M 140 64 L 140 80 L 140 100" class="line"/>
+
+  <rect x="60" y="100" width="180" height="34" rx="5" class="domain"/>
+  <text x="150" y="121" class="lbl">payments/ (domain)</text>
+
+  <path d="M 150 134 L 150 160 L 80 160 L 80 180" class="line"/>
+  <path d="M 150 160 L 150 180" class="line"/>
+  <path d="M 150 160 L 220 160 L 220 180" class="line"/>
+
+  <rect x="20" y="180" width="120" height="34" rx="5" class="proj"/>
+  <text x="80" y="201" class="lbl">api</text>
+
+  <rect x="150" y="180" width="120" height="34" rx="5" class="proj"/>
+  <text x="210" y="201" class="lbl">ui</text>
+
+  <rect x="280" y="180" width="120" height="34" rx="5" class="proj"/>
+  <text x="340" y="201" class="lbl">batch</text>
+
+  <!-- IAM groups -->
+  <rect x="500" y="30" width="290" height="34" rx="5" class="iam"/>
+  <text x="645" y="51" class="lbl">payments-api_w  (SSCAM)</text>
+
+  <rect x="500" y="75" width="290" height="34" rx="5" class="iam"/>
+  <text x="645" y="96" class="lbl">payments-api_r  (SSCAM)</text>
+
+  <rect x="500" y="120" width="290" height="34" rx="5" class="iam"/>
+  <text x="645" y="141" class="lbl">gl-payments-dev  (SailPoint, optional)</text>
+
+  <rect x="500" y="165" width="290" height="34" rx="5" class="iam"/>
+  <text x="645" y="186" class="lbl">gl-restricted-read  (SailPoint)</text>
+
+  <!-- Shares -->
+  <path d="M 500 47 L 140 197" class="share"/>
+  <path d="M 500 92 L 140 197" class="share"/>
+  <path d="M 500 137 L 240 121" class="share"/>
+
+  <!-- labels on shares -->
+  <text x="400" y="75" class="lbl-small" style="text-anchor:start; fill:#de350b">Dev on api</text>
+  <text x="400" y="140" class="lbl-small" style="text-anchor:start; fill:#de350b">Rep on api</text>
+  <text x="390" y="125" class="lbl-small" style="text-anchor:start; fill:#de350b">Dev on payments/</text>
+
+  <text x="400" y="280" class="lbl-small" style="text-anchor:start">SSCAM project-level groups = Bitbucket-era pattern, preserved</text>
+  <text x="400" y="295" class="lbl-small" style="text-anchor:start">SailPoint group-level group = gradual transition toward Approach 2</text>
+  <text x="400" y="310" class="lbl-small" style="text-anchor:start">Dashed red arrow = "shared with GitLab group at role"</text>
+</svg>
+<div class="caption">Figure 3 — Approach 1 hybrid configuration. Project-level SSCAM groups coexist with an optional product-level SailPoint group.</div>
+</div>
+
+<h3>6.2 Validation</h3>
+
+<ul>
+  <li>Alice (via <code>payments-api_w</code>) was able to clone, push feature branches, and open merge requests on <code>payments/api</code>. She had no access to <code>payments/ui</code> or <code>payments/batch</code> beyond what the <code>gl-payments-dev</code> sharing granted. This confirmed the Bitbucket-style per-project write control worked.</li>
+  <li>Rita (via <code>payments-api_r</code>) was able to clone and read <code>payments/api</code> but could not push. Confirmed the per-project read control.</li>
+  <li>When the optional <code>gl-payments-dev</code> sharing was added to the <code>payments/</code> domain, Alice gained Developer access across all three projects. Removing the share restored the project-only scope.</li>
+  <li>The <code>payments/restricted/payments-secrets</code> project was invisible to Alice, Rita, and other standard users. Con (via <code>gl-restricted-read</code>) saw only the restricted project and nothing else.</li>
+  <li>Dan, with only top-level Minimal Access, could discover non-restricted Internal projects via the GitLab search but could not see anything in <code>restricted/</code>.</li>
+</ul>
+
+<div class="outcome">
+<strong>Outcome:</strong> Approach 1 preserved the Bitbucket-era per-project access pattern while introducing the deployment-zone grouping in a non-disruptive way. Inner sourcing worked for non-restricted projects, and confidential projects were correctly isolated. The hybrid pattern is viable as a transition model as the design specifies.
+</div>
+
+<hr>
+
+<h2>7. Part D — Approach 2 Validation (Target Group-Centric)</h2>
+
+<p>Approach 2 was validated on a parallel structure using a second domain <code>trade/</code> created under <code>live-production</code>. No project-level SSCAM groups were introduced. All access was granted at the domain level via SailPoint-style groups.</p>
+
+<h3>7.1 Configuration</h3>
+
+<p>Four IAM groups under <code>acme/iam-sim/sailpoint/</code>:</p>
+
+<ul>
+  <li><code>gl-trade-read</code> → shared with <code>acme/live-production/trade/</code> at Reporter</li>
+  <li><code>gl-trade-dev</code> → shared at Developer</li>
+  <li><code>gl-trade-maint</code> → shared at Maintainer</li>
+  <li><code>gl-trade-owner</code> → shared at Owner</li>
+</ul>
+
+<p>Three projects were created under <code>trade/</code>: <code>orders</code>, <code>settlements</code>, and <code>reconciliation</code>. No project-level member configuration was applied to any of them.</p>
+
+<h3>7.2 Validation</h3>
+
+<ul>
+  <li>A test user added to <code>gl-trade-dev</code> immediately gained Developer access to all three projects. No per-project configuration was required.</li>
+  <li>A new project <code>trade-reports</code> was added under <code>trade/</code> mid-test. The same test user had immediate Developer access without any additional action — demonstrating the "access granted once, inherits to all projects" property.</li>
+  <li>Promoting the user from <code>gl-trade-dev</code> to <code>gl-trade-maint</code> upgraded their role consistently across all four projects.</li>
+  <li>Removing the user from <code>gl-trade-dev</code> revoked access uniformly.</li>
+</ul>
+
+<div class="outcome">
+<strong>Outcome:</strong> Approach 2 delivered the "single IAM group grants access everywhere in the domain" behaviour described in the design. New projects added to the domain inherited the correct access without any administrative action. This is the scalability win that justifies the transition effort.
+</div>
+
+<hr>
+
+<h2>8. Part E — Migration from Approach 1 to Approach 2</h2>
+
+<p>The migration scenario is central to the design's "evolution path" claim. The <code>payments/api</code> project — onboarded under Approach 1 in Part C — was migrated to Approach 2 to validate that the transition works without outages.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 840 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Migration flow">
+  <style>
+    .state { fill: #fff; stroke: #0052cc; stroke-width: 1.5; }
+    .state-mid { fill: #fffae6; stroke: #ff991f; stroke-width: 1.5; }
+    .state-end { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #42526e; text-anchor: middle; }
+    .arrow { stroke: #6b778c; stroke-width: 1.5; fill: none; marker-end: url(#mig-arrow); }
+    .hdr { font-family: -apple-system, Arial, sans-serif; font-size: 12px; font-weight: 600; fill: #000; text-anchor: middle; }
+  </style>
+  <defs>
+    <marker id="mig-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#6b778c"/>
+    </marker>
+  </defs>
+
+  <!-- Step 1 -->
+  <rect x="30" y="50" width="180" height="160" rx="6" class="state"/>
+  <text x="120" y="40" class="hdr">Step 1 — Before</text>
+  <text x="120" y="75" class="lbl">payments/api</text>
+  <text x="120" y="95" class="lbl-small">Members:</text>
+  <text x="120" y="115" class="lbl-small">- payments-api_w → Dev</text>
+  <text x="120" y="135" class="lbl-small">- payments-api_r → Rep</text>
+  <text x="120" y="160" class="lbl-small">(Approach 1 active)</text>
+
+  <path d="M 210 130 L 245 130" class="arrow"/>
+
+  <!-- Step 2 -->
+  <rect x="250" y="50" width="180" height="220" rx="6" class="state-mid"/>
+  <text x="340" y="40" class="hdr">Step 2 — Parallel</text>
+  <text x="340" y="75" class="lbl">payments/api</text>
+  <text x="340" y="95" class="lbl-small">Old members retained:</text>
+  <text x="340" y="115" class="lbl-small">- payments-api_w → Dev</text>
+  <text x="340" y="130" class="lbl-small">- payments-api_r → Rep</text>
+  <text x="340" y="150" class="lbl-small">New member added at</text>
+  <text x="340" y="165" class="lbl-small">payments/ domain:</text>
+  <text x="340" y="185" class="lbl-small">- gl-payments-dev → Dev</text>
+  <text x="340" y="205" class="lbl-small">(via domain inheritance)</text>
+  <text x="340" y="230" class="lbl-small">Users gain access via BOTH</text>
+  <text x="340" y="245" class="lbl-small">paths — no gap, no break</text>
+
+  <path d="M 430 160 L 465 160" class="arrow"/>
+
+  <!-- Step 3 -->
+  <rect x="470" y="50" width="180" height="160" rx="6" class="state-end"/>
+  <text x="560" y="40" class="hdr">Step 3 — Migrated</text>
+  <text x="560" y="75" class="lbl">payments/api</text>
+  <text x="560" y="95" class="lbl-small">Members (project-level):</text>
+  <text x="560" y="115" class="lbl-small">(none — removed)</text>
+  <text x="560" y="135" class="lbl-small">Inherited from domain:</text>
+  <text x="560" y="155" class="lbl-small">- gl-payments-dev → Dev</text>
+  <text x="560" y="175" class="lbl-small">- gl-payments-read → Rep</text>
+  <text x="560" y="195" class="lbl-small">(Approach 2 active)</text>
+
+  <path d="M 650 130 L 685 130" class="arrow"/>
+
+  <!-- Step 4 -->
+  <rect x="690" y="50" width="140" height="160" rx="6" class="state-end"/>
+  <text x="760" y="40" class="hdr">Step 4 — Cleanup</text>
+  <text x="760" y="80" class="lbl-small">Decommission</text>
+  <text x="760" y="100" class="lbl-small">SSCAM groups:</text>
+  <text x="760" y="120" class="lbl-small">- payments-api_w</text>
+  <text x="760" y="140" class="lbl-small">- payments-api_r</text>
+  <text x="760" y="170" class="lbl-small">Audit complete</text>
+
+  <text x="430" y="310" class="hdr">Users retain access throughout — no outage window</text>
+</svg>
+<div class="caption">Figure 4 — Migration sequence from Approach 1 to Approach 2. Parallel coexistence (Step 2) guarantees no access gap during cutover.</div>
+</div>
+
+<h3>8.1 Migration Steps Executed</h3>
+
+<ol>
+  <li><strong>Before state.</strong> Alice and Rita had access via <code>payments-api_w</code> and <code>payments-api_r</code> shared with the project directly. Confirmed Alice could push and Rita could read.</li>
+  <li><strong>Parallel grant.</strong> The <code>gl-payments-dev</code> and <code>gl-payments-read</code> SailPoint groups were shared with the <code>payments/</code> domain at Developer and Reporter respectively. Alice and Rita were added to these SailPoint groups in addition to the existing SSCAM groups. At this point both access paths were live simultaneously — users had no perceivable change.</li>
+  <li><strong>Validate parallel access.</strong> Alice logged out, logged back in, and confirmed she still had Developer access on <code>payments/api</code>. The Members page showed Alice with two entries: one from the SSCAM share (Developer on api) and one inherited from the domain-level SailPoint share (Developer on payments). GitLab applied the higher role — in this case both were Developer, so there was no effective change.</li>
+  <li><strong>Remove SSCAM shares.</strong> The <code>payments-api_w</code> and <code>payments-api_r</code> shares were removed from the project. Alice and Rita retained access because the inherited SailPoint grants remained active. Re-logging in confirmed no break in access.</li>
+  <li><strong>Decommission SSCAM groups.</strong> The <code>payments-api_w</code> and <code>payments-api_r</code> groups themselves were emptied and deleted. No orphan members remained.</li>
+</ol>
+
+<h3>8.2 Break-Test</h3>
+
+<p>To confirm that removing the SSCAM groups was the actual cause of continued access, a final check was performed: Alice was temporarily removed from <code>gl-payments-dev</code>. Her access to <code>payments/api</code> was revoked immediately, confirming that post-migration access flowed exclusively through the SailPoint group-level grant and no stale path remained.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> The migration from Approach 1 to Approach 2 was completed without any access outage for end users. The parallel-grant pattern guaranteed continuity. Post-migration, access flowed cleanly through the domain-level SailPoint group, and the SSCAM project-level groups could be fully decommissioned. The evolution path described in the design is operationally viable.
+</div>
+
+<hr>
+
+<h2>9. Part F — Custom Role Behavior (Promoter, Operator, Security Manager)</h2>
+
+<h3>9.1 Promoter</h3>
+
+<p>Paul was assigned the Promoter custom role via membership in <code>P2P_GS_DevOps_payments_Promoter</code>, which was shared at the <code>payments/</code> domain.</p>
+
+<p>A promotion pipeline was defined on <code>payments/api</code> that deploys a pre-built artifact from a lower environment to a higher one, gated as a manual job with <code>environment: staging</code>. Paul was able to trigger the promotion job on main. Paul was not able to push code, merge MRs, or modify branch protections. He could modify a dedicated set of CI variables scoped to the promotion pipeline (specifically the artifact version) but was restricted from editing protected production variables.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> The Promoter role granted the right to trigger promotion pipelines without write access. This matches the design intent of a role that moves artifacts between stages without authoring code changes.
+</div>
+
+<h3>9.2 Operator</h3>
+
+<p>Carol was assigned the Operator custom role via <code>P2P_GS_DevOps_payments_Operator</code>.</p>
+
+<p>Because GitLab Custom Roles do not support branch- or environment-level granularity natively, the required restriction "Operator access customised to specific branches and pipelines that are prod type" was implemented via a two-layer approach:</p>
+
+<ol>
+  <li><strong>Custom Role layer</strong> — Carol holds the Operator role at the <code>payments/</code> domain, giving her <code>admin_pipeline</code>, <code>admin_environment</code>, and <code>admin_cicd_variables</code> capability in principle.</li>
+  <li><strong>Protected environment layer</strong> — the <code>prod</code> environment on each project has "allowed to deploy" restricted to the Operator user list. The <code>staging</code> environment has broader access. This effectively scopes Operator actions to production-only environments.</li>
+  <li><strong>Protected branch layer</strong> — <code>release/*</code> and <code>prod/*</code> branch patterns are protected with push restricted to Operators and Maintainers; feature branches are not Operator-restricted.</li>
+</ol>
+
+<div class="diagram">
+<svg viewBox="0 0 780 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Operator scoping layers">
+  <style>
+    .layer { fill: #deebff; stroke: #0052cc; stroke-width: 1.5; }
+    .layer-mid { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .layer-outer { fill: #fffae6; stroke: #ff991f; stroke-width: 1.5; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 11px; fill: #42526e; text-anchor: middle; }
+  </style>
+
+  <rect x="30" y="30" width="720" height="220" rx="6" class="layer-outer"/>
+  <text x="390" y="55" class="lbl">Layer 1 — Operator Custom Role (broad CI/CD capabilities)</text>
+
+  <rect x="80" y="80" width="620" height="140" rx="6" class="layer-mid"/>
+  <text x="390" y="105" class="lbl">Layer 2 — Protected environment: prod only allows Operator user list to deploy</text>
+
+  <rect x="150" y="130" width="480" height="70" rx="6" class="layer"/>
+  <text x="390" y="155" class="lbl">Layer 3 — Protected branches: release/* and prod/*</text>
+  <text x="390" y="175" class="lbl">restricted to Operators + Maintainers</text>
+
+  <text x="390" y="270" class="lbl-small">Layers combine: Operator can only act on prod environment, on prod-pattern branches.</text>
+</svg>
+<div class="caption">Figure 5 — Three-layer scoping to achieve production-only Operator access, compensating for the lack of branch-level granularity in Custom Roles.</div>
+</div>
+
+<p>With this configuration, Carol was able to deploy to <code>prod</code> on <code>payments/api</code>, manage the <code>prod</code> environment settings, and push to <code>release/*</code> branches. She was unable to deploy to unprotected environments she was not listed on, and she could not push to non-production branches. A test Operator member without protected-environment allow-listing could not deploy at all — confirming Layer 2 is the enforcing layer.</p>
+
+<div class="outcome">
+<strong>Outcome:</strong> The Operator role achieved the required "prod-only" restriction through layered protection rules. The pattern is reproducible and auditable: the Custom Role grants capability; the protected environment and branch allow-lists constrain scope. Teams onboarding a new project must configure both layers for the restriction to hold.
+</div>
+
+<h3>9.3 Security Manager</h3>
+
+<p>Sam was assigned the Security Manager custom role via <code>P2P_GS_DevOps_payments_SecurityManager</code>.</p>
+
+<p>Tests:</p>
+
+<ul>
+  <li>Sam was able to view the Security Dashboard and the Vulnerability Report on <code>payments/api</code>. Confirmed <code>read_vulnerability</code>.</li>
+  <li>Sam was able to mark a vulnerability as dismissed (waiver) with a justification. Confirmed <code>admin_vulnerability</code>.</li>
+  <li>Sam was able to approve a merge request on <code>payments/api</code> as an eligible approver via an MR approval rule that listed the Security Manager group. Confirmed <code>approve_merge_request</code>.</li>
+  <li>Sam was <strong>not</strong> able to push code, merge the MR himself, or modify project settings. Confirmed absence of <code>push_code</code>, <code>merge_merge_request</code>, and <code>admin_project</code>.</li>
+  <li>Sam's approval was counted toward the "Require code owner approval" check on a protected branch, when the Security Manager group was listed in <code>CODEOWNERS</code> for sensitive paths.</li>
+</ul>
+
+<div class="outcome">
+<strong>Outcome:</strong> The Security Manager role enabled vulnerability waivers and merge approval without granting any write access. This satisfies the design intent of a role that enforces security policy without the ability to modify code or bypass protections.
+</div>
+
+<hr>
+
+<h2>10. Part G — Inner Sourcing and Confidential Handling</h2>
+
+<p>The design's principle "inner sourcing by default unless explicitly classified as confidential" was validated at both the group and project levels.</p>
+
+<h3>10.1 Inner Sourcing (Non-Restricted)</h3>
+
+<p>Dan, a user with only Minimal Access at the top-level <code>acme</code> group, was able to:</p>
+
+<ul>
+  <li>Discover <code>payments/api</code> and <code>trade/orders</code> via GitLab search.</li>
+  <li>Browse the code on those projects.</li>
+  <li>Clone them to his local machine.</li>
+  <li>Fork them into his personal namespace.</li>
+  <li>Open a merge request against the upstream projects.</li>
+  <li>Not push directly to the upstream projects (rejected with permission error).</li>
+</ul>
+
+<p>Bob merged Dan's MR on <code>payments/api</code>, and the change landed in main without Dan ever having write access. The full inner-source flow was reproduced in both approaches.</p>
+
+<h3>10.2 Confidential Handling</h3>
+
+<p>The <code>payments/restricted/payments-secrets</code> project was set to Private via the inheritance from the Private <code>restricted/</code> subgroup. Dan, Alice, Rita, and other general users could not see the project in search, in the parent group's project list, or by direct URL (which returned 404).</p>
+
+<p>Only Con, added to <code>gl-restricted-read</code> which was shared at the <code>restricted/</code> subgroup, could see <code>payments-secrets</code>. Con had Reporter access, sufficient to read the code but not to push or modify settings.</p>
+
+<p>A test was performed where Alice, as Developer on <code>payments/</code>, attempted to navigate to <code>payments/restricted/</code>. She was blocked — the Private visibility of <code>restricted/</code> overrides the Internal visibility inherited from the parent group, so Alice's Developer role at the domain level did not cascade into the confidential subgroup.</p>
+
+<div class="callout-warn">
+<strong>Important configuration nuance:</strong> For confidential projects to be invisible to users with access to the parent domain, the <code>restricted/</code> subgroup itself must be Private, not merely the projects within it. The PoC confirmed that a Private project inside an Internal parent is still visible in the parent's listing (even if the code is protected). Only by setting the subgroup itself to Private was the desired "fully hidden from non-members" behaviour achieved.
+</div>
+
+<div class="outcome">
+<strong>Outcome:</strong> Inner sourcing worked as the default posture. Confidential projects were correctly isolated via Private <code>restricted/</code> subgroups. The pattern scales: each domain can have its own <code>restricted/</code> subgroup with its own IAM membership, without affecting neighbouring domains.
+</div>
+
+<hr>
+
+<h2>11. Part H — Policy Inheritance at the Deployment-Zone Level</h2>
+
+<p>This part validates the design's most distinctive principle: that policy (branch protection, approval requirements, CI/CD variables, runner scoping) can be enforced <em>once per deployment zone</em> and inherited to all projects beneath.</p>
+
+<h3>11.1 Zone-Level Configuration</h3>
+
+<p>At <code>acme/live-production/</code>, the following were configured:</p>
+
+<ul>
+  <li>A group-level protected CI/CD variable <code>PROD_DEPLOY_TOKEN</code>, marked Protect and Mask, with environment scope <code>prod</code>.</li>
+  <li>A group-level runner tagged <code>live-prod-runner</code>, with the Protected flag enabled.</li>
+  <li>A default branch protection convention documented for all child projects: main requires Maintainer to merge, 2 approvals required, code owner approval required.</li>
+  <li>A shared CI template project at <code>acme/platform/ci-templates</code> with a <code>live-production.yml</code> template that consumers include.</li>
+</ul>
+
+<p>At <code>acme/non-live-enterprise/</code>, a deliberately looser configuration was applied: 1 approval required, no required code owner approval, no protected prod variables, shared runners permitted.</p>
+
+<h3>11.2 Validation</h3>
+
+<ul>
+  <li>A pipeline in <code>payments/api</code> (under <code>live-production</code>) successfully inherited <code>PROD_DEPLOY_TOKEN</code> when the job declared <code>environment: prod</code>. The same variable was invisible to jobs in <code>trade/orders</code>'s non-live counterpart, confirming isolation.</li>
+  <li>The <code>live-prod-runner</code> picked up jobs from <code>payments/api</code>, <code>payments/ui</code>, and <code>trade/orders</code> (all under <code>live-production</code>), but refused jobs from projects in <code>non-live-enterprise</code>.</li>
+  <li>Adding a new project <code>payments/reporting</code> under <code>live-production/payments/</code> — it immediately had access to the group variable and runner without any project-level configuration, confirming the "enforce once, inherit everywhere" property.</li>
+  <li>A deliberate attempt to override <code>PROD_DEPLOY_TOKEN</code> at the project level was allowed (GitLab permits project-level override of group variables), but surfaces a warning in the Members and CI/CD audit views.</li>
+</ul>
+
+<div class="outcome">
+<strong>Outcome:</strong> Policy inheritance at the deployment-zone level worked as the design requires. New projects inherit the zone's security, CI, and runner posture automatically. This is the core scalability benefit that the design's grouping criterion (by deployment model, not team) unlocks.
+</div>
+
+<hr>
+
+<h2>12. Part I — CI/CD Access Scenarios</h2>
+
+<p>Nine CI/CD access scenarios were executed against the Approach 2 <code>trade/</code> domain, extending the pipeline built in earlier parts. The purpose was to confirm that CI/CD behavior is governed by the access model regardless of whether access was granted directly or inherited from domain-level IAM groups.</p>
+
+<h3>12.1 Scenario Summary</h3>
+
+<table>
+<thead><tr><th>Scenario</th><th>What was tested</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>A — Protected variables</td><td><code>PROD_DEPLOY_TOKEN</code> visible only on protected ref + matching environment declaration</td><td>Pass — variable hidden on feature branches, hidden on main without environment, visible only on prod-environment jobs</td></tr>
+<tr><td>B — Manual job authorization</td><td>Operator-restricted manual deploy job to <code>prod</code> environment</td><td>Pass — only Operator-listed users could play; Developers could not. Without environment declaration, any Developer could play.</td></tr>
+<tr><td>C — Fork pipeline isolation</td><td>Dan's fork MR attempted to read <code>PROD_DEPLOY_TOKEN</code></td><td>Pass — even with approval to run, protected variables were blank in fork pipelines</td></tr>
+<tr><td>D — CI_JOB_TOKEN scoping</td><td>Cross-project authentication from <code>trade/orders</code> to <code>payments/api</code></td><td>Pass — default-deny; allowlist addition enabled explicit cross-project access</td></tr>
+<tr><td>E — Runner scoping</td><td>Zone-scoped runner <code>live-prod-runner</code> against sibling-zone projects</td><td>Pass — runner picked up only live-production jobs; non-live jobs remained pending</td></tr>
+<tr><td>F — CI/CD settings access</td><td>Alice (Developer) vs Bob (Maintainer) accessing variables, protected branches, runners</td><td>Pass — Developer blocked; Maintainer allowed</td></tr>
+<tr><td>G — Scheduled pipeline ownership</td><td>Schedule ownership transfer; owner role demotion effect</td><td>Pass — schedule runs as owner; demoting the owner caused privileged scheduled jobs to fail at runtime; transferring ownership to a long-lived account resolved this</td></tr>
+<tr><td>H — Variable inheritance and override</td><td>Group vs project variables; sibling isolation</td><td>Pass — group variables inherited, project variables overrode at project scope, sibling group variables not visible</td></tr>
+<tr><td>I — Environment-scoped variables</td><td>Same key <code>API_KEY</code> with different values per environment</td><td>Pass — each environment's job saw its own value; job without environment declaration saw neither</td></tr>
+</tbody>
+</table>
+
+<div class="outcome">
+<strong>Outcome:</strong> All nine CI/CD scenarios passed. The access model governs CI/CD behavior consistently whether access is granted via Approach 1 (project-level) or Approach 2 (group-level). The design's principle of "authorization via roles; control via branch protection, approvals, CODEOWNERS, and CI/CD guardrails" held under all tested conditions.
+</div>
+
+<hr>
+
+<h2>13. Success Criteria — Results</h2>
+
+<p>All 32 defined success criteria passed. Screenshot evidence was captured during each relevant step.</p>
+
+<table>
+<thead><tr><th>#</th><th>Criterion</th><th>Part</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Deployment-model hierarchy constructed per design</td><td>A</td><td>Pass</td></tr>
+<tr><td>2</td><td>Visibility inheritance supports inner source and confidential isolation</td><td>A, G</td><td>Pass</td></tr>
+<tr><td>3</td><td>Promoter custom role created with correct ability bundle</td><td>B</td><td>Pass</td></tr>
+<tr><td>4</td><td>Operator custom role created with correct ability bundle</td><td>B</td><td>Pass</td></tr>
+<tr><td>5</td><td>Security Manager custom role created with correct ability bundle</td><td>B</td><td>Pass</td></tr>
+<tr><td>6</td><td>Role-to-IAM-group mapping matches ASIS and TOBE conventions</td><td>B</td><td>Pass</td></tr>
+<tr><td>7</td><td>Approach 1 preserves Bitbucket-style per-project <code>_w</code>/<code>_r</code> access</td><td>C</td><td>Pass</td></tr>
+<tr><td>8</td><td>Approach 1 coexists with optional product-level grouping</td><td>C</td><td>Pass</td></tr>
+<tr><td>9</td><td>Approach 2 grants access via single domain-level IAM group</td><td>D</td><td>Pass</td></tr>
+<tr><td>10</td><td>New projects under an Approach 2 domain inherit access automatically</td><td>D</td><td>Pass</td></tr>
+<tr><td>11</td><td>Migration from Approach 1 to Approach 2 causes no access outage</td><td>E</td><td>Pass</td></tr>
+<tr><td>12</td><td>Old SSCAM groups can be decommissioned cleanly post-migration</td><td>E</td><td>Pass</td></tr>
+<tr><td>13</td><td>Promoter can trigger promotion pipelines without push access</td><td>F</td><td>Pass</td></tr>
+<tr><td>14</td><td>Operator is effectively restricted to prod environment and branches</td><td>F</td><td>Pass</td></tr>
+<tr><td>15</td><td>Security Manager can waive vulnerabilities and approve MRs without push</td><td>F</td><td>Pass</td></tr>
+<tr><td>16</td><td>Inner sourcing works across the organization for non-restricted projects</td><td>G</td><td>Pass</td></tr>
+<tr><td>17</td><td>Confidential projects in <code>restricted/</code> are fully hidden from non-members</td><td>G</td><td>Pass</td></tr>
+<tr><td>18</td><td>Zone-level CI/CD variable inherits to all projects beneath</td><td>H</td><td>Pass</td></tr>
+<tr><td>19</td><td>Zone-scoped runner only serves projects within its zone</td><td>H</td><td>Pass</td></tr>
+<tr><td>20</td><td>New projects in a zone inherit security posture automatically</td><td>H</td><td>Pass</td></tr>
+<tr><td>21</td><td>Different zones can enforce different policy strengths</td><td>H</td><td>Pass</td></tr>
+<tr><td>22</td><td>Protected CI variables do not leak to feature branch pipelines</td><td>I (A)</td><td>Pass</td></tr>
+<tr><td>23</td><td>Environment-scoped variables only exposed in matching environment jobs</td><td>I (A, I)</td><td>Pass</td></tr>
+<tr><td>24</td><td>Manual jobs to protected environments respect Operator user list</td><td>I (B)</td><td>Pass</td></tr>
+<tr><td>25</td><td>Manual jobs without environment are role-gated, not user-specific</td><td>I (B)</td><td>Pass</td></tr>
+<tr><td>26</td><td>Fork pipelines cannot read protected variables even with approval</td><td>I (C)</td><td>Pass</td></tr>
+<tr><td>27</td><td>External contributors cannot view CI variable values</td><td>I (C)</td><td>Pass</td></tr>
+<tr><td>28</td><td>CI_JOB_TOKEN cross-project access requires explicit allowlist</td><td>I (D)</td><td>Pass</td></tr>
+<tr><td>29</td><td>Group-scoped runners reject jobs from sibling groups</td><td>I (E)</td><td>Pass</td></tr>
+<tr><td>30</td><td>Developers cannot view/edit CI variables or protected branches</td><td>I (F)</td><td>Pass</td></tr>
+<tr><td>31</td><td>Scheduled pipelines inherit current owner permissions</td><td>I (G)</td><td>Pass</td></tr>
+<tr><td>32</td><td>Group-level variables override correctly and isolate across siblings</td><td>I (H)</td><td>Pass</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2>14. Observations and Gaps</h2>
+
+<p>Several operationally significant observations emerged during the PoC.</p>
+
+<h4>14.1 Operator role needs layered configuration</h4>
+
+<p>The Custom Role alone cannot restrict Operator to prod branches and prod environments. Protected environment allow-lists and protected branch rules are required. Teams onboarding new projects must configure all three layers (Custom Role assignment, protected environment allow-list, protected branch allow-list) for the design intent to hold. This should be baked into the project onboarding template.</p>
+
+<h4>14.2 Confidential subgroup must itself be Private</h4>
+
+<p>Making only projects Private while leaving the <code>restricted/</code> subgroup Internal allows the project name and metadata to appear in the parent group's listing. The subgroup itself must be Private to achieve true confidentiality. This should be enforced at project onboarding by convention or automation.</p>
+
+<h4>14.3 Project-level variable overrides can weaken zone policy</h4>
+
+<p>GitLab allows a project-level CI/CD variable to override a group-level variable with the same key, even if the group-level variable is protected. This is a potential integrity gap for the "enforce once at zone level" principle. Mitigations: audit for project-level variables that shadow zone variables, and consider instance-level settings that prevent override.</p>
+
+<h4>14.4 Migration from Approach 1 to Approach 2 must be coordinated per application</h4>
+
+<p>The parallel-grant pattern works cleanly on a per-application basis but requires a short period where both IAM paths exist. Bulk migration would require coordinating many such parallel windows. A migration tracker and per-application cutover plan are recommended.</p>
+
+<h4>14.5 Scheduled pipeline ownership is a long-lived individual attachment</h4>
+
+<p>Production schedules tied to a specific user will fail if that user's role is reduced or they leave. Ownership should be transferred to a long-lived service-style account before any role change on the original owner. This is an operational discipline issue, not a GitLab capability gap.</p>
+
+<h4>14.6 LDAP simulation is a real gap</h4>
+
+<p>This PoC did not validate SAML Group Sync, SailPoint, or SSCAM integration. The role and policy logic is confirmed to work; the IAM binding layer remains untested on real infrastructure. A second-phase PoC is required before production rollout.</p>
+
+<h4>14.7 Reporting by deployment zone is enabled by the hierarchy</h4>
+
+<p>Because all projects live under a deployment-zone subgroup, native GitLab reports (e.g., "all projects in live-production") work without any tagging or custom classification. This is a direct benefit of the design's grouping criterion and should be leveraged for compliance reporting.</p>
+
+<hr>
+
+<h2>15. Recommendation and Next Steps</h2>
+
+<div class="callout-success">
+<strong>Go — proceed to broader rollout.</strong> All 32 success criteria passed. Both Approach 1 (hybrid transition) and Approach 2 (target group-centric) function as the design specifies. The migration between them is operationally viable without outages. The three custom roles (Promoter, Operator, Security Manager) function as intended, with the Operator role requiring the layered configuration documented in Observation 14.1.
+</div>
+
+<h4>Recommended next steps</h4>
+
+<ol>
+  <li><strong>LDAP Integration PoC (Phase 2).</strong> Execute a focused follow-up PoC covering SAML Group Sync against SailPoint and SSCAM on the same hierarchy. Validate sync latency, deprovisioning, and lifecycle events with representative user populations.</li>
+  <li><strong>Onboarding templates.</strong> Produce reusable templates for new project onboarding under each approach, including the layered Operator configuration and the Private <code>restricted/</code> subgroup pattern.</li>
+  <li><strong>Zone-level policy baselines.</strong> Document the standard protected branch rules, required approvals, and CI/CD variable conventions for each deployment zone. These baselines should be applied at group creation time, not per project.</li>
+  <li><strong>Migration playbook.</strong> Codify the Approach 1 → Approach 2 migration sequence (validated in Part E) into a reusable playbook for the broader application estate.</li>
+  <li><strong>Audit automation.</strong> Schedule periodic checks for the gaps identified in Observations 14.3 (project-level variable overrides) and 14.5 (scheduled pipeline ownership). These are operational risks that must be monitored rather than prevented.</li>
+  <li><strong>Compliance framework PoC.</strong> In parallel, validate mandatory CI job injection (SAST, secret detection, dependency scanning) on top of the validated access model to close the full control surface.</li>
+</ol>
+
+<p>With these next steps in flight, the enterprise GitLab access model is suitable for broader adoption.</p>
+
+<hr>
+
+<p><em>End of report.</em></p>
+
+</body>
+</html>

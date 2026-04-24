@@ -1,0 +1,82 @@
+# =============================================================================
+# Secrets — NEVER commit
+# =============================================================================
+# Persisted admin URL + PAT (chmod 600 on POSIX, written by run_poc.py).
+.pocenv
+.pocenv.*
+*.pocenv
+
+# Test-user PATs minted by setup_test_users.py.
+.env.tokens
+tokens.json
+*.tokens
+
+# Generic env / secret files (in case anyone drops a .env here later).
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+secrets.json
+credentials.json
+
+# Test-user credentials — the checked-in test_users.properties holds sandbox
+# defaults; if you uncomment the line below the file becomes ignored entirely.
+# Recommended for shared / non-localhost instances.
+# ui_tests/test_users.properties
+
+# =============================================================================
+# Per-run output (regenerated every run)
+# =============================================================================
+# JSONL trace + reports written by phase_14_report.py.
+api-calls.jsonl
+*.jsonl
+poc-final-report.html
+poc-final-report.txt
+
+# UI evidence artifacts.
+ui_tests/screenshots/
+ui_tests/ui-test-report.html
+ui_tests/screenshots-*/
+
+# Stray screenshots / images at any level (debug captures, ad-hoc shots).
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+
+# Login-failure debug captures (covered by *.png above; listed for clarity).
+**/_login_failed__*
+
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# =============================================================================
+# Editor / OS noise
+# =============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

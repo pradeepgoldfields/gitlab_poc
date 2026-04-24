@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Enterprise GitLab Access Model PoC — Execution Guide</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; max-width: 960px; margin: 2em auto; padding: 0 1.5em; color: #000000; background: #ffffff; line-height: 1.6; }
+  h1 { font-size: 2em; border-bottom: 2px solid #0052cc; padding-bottom: 0.3em; }
+  h2 { font-size: 1.4em; margin-top: 2em; border-bottom: 1px solid #dfe1e6; padding-bottom: 0.2em; }
+  h3 { font-size: 1.15em; margin-top: 1.5em; color: #000000; }
+  h4 { font-size: 1.02em; margin-top: 1.2em; color: #000000; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  th, td { border: 1px solid #dfe1e6; padding: 0.5em 0.75em; text-align: left; vertical-align: top; }
+  th { background: #f4f5f7; font-weight: 600; }
+  pre { background: #f4f5f7; border: 1px solid #dfe1e6; border-radius: 3px; padding: 0.75em 1em; overflow-x: auto; font-size: 0.9em; }
+  code { background: #f4f5f7; padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.9em; }
+  pre code { background: none; padding: 0; }
+  .callout-info { border-left: 4px solid #0052cc; background: #deebff; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-warn { border-left: 4px solid #ff991f; background: #fffae6; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-success { border-left: 4px solid #00875a; background: #e3fcef; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-danger { border-left: 4px solid #de350b; background: #ffebe6; padding: 0.75em 1em; margin: 1em 0; }
+  .step { background: #f4f5f7; border-left: 4px solid #0052cc; padding: 0.75em 1em; margin: 1em 0; border-radius: 3px; }
+  .step-title { font-weight: 600; margin-bottom: 0.3em; }
+  .expected { background: #e3fcef; border-left: 4px solid #00875a; padding: 0.5em 1em; margin: 0.5em 0 1em 0; border-radius: 3px; font-size: 0.95em; }
+  ul, ol { padding-left: 1.5em; }
+  li { margin: 0.3em 0; }
+  .checklist li { list-style: none; margin-left: -1.5em; padding-left: 1.5em; text-indent: -1.5em; }
+  .checklist li:before { content: "☐ "; }
+  .nav { font-family: monospace; font-size: 0.95em; background: #f4f5f7; padding: 0.1em 0.4em; border-radius: 3px; }
+  .phase-banner { background: #0052cc; color: #fff; padding: 0.5em 1em; border-radius: 4px; margin: 2em 0 1em 0; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h1>Enterprise GitLab Access Model PoC — Execution Guide</h1>
+
+<p><strong>Purpose:</strong> Step-by-step instructions to execute the enterprise GitLab access model Proof of Concept. Follow top to bottom. Each step has a click path, values to enter, and a check to confirm it worked before moving on.</p>
+
+<p><strong>What you will build:</strong> A self-contained validation environment covering the deployment-model hierarchy, both authorization approaches (hybrid and target), the three custom roles, inner sourcing, confidential handling, zone-level policy inheritance, CI/CD access scenarios, and a migration between the two approaches.</p>
+
+<p><strong>Who this is for:</strong> One platform engineer executing the PoC manually through the GitLab web UI.</p>
+
+<p><strong>Time:</strong> 3–5 days of focused work. Can be spread over 2 weeks at 2 hours/day. The guide is organised in phases so you can pause and resume at phase boundaries.</p>
+
+<p><strong>Assumption:</strong> You have instance Admin rights on the self-managed GitLab instance, or at least Owner rights on a dedicated top-level sandbox group plus the ability to create instance-level Custom Roles (which requires Admin).</p>
+
+<hr>
+
+<h2>Table of Contents</h2>
+<ol>
+  <li>Prerequisites and Preparation</li>
+  <li>Phase 1 — Custom Roles (Instance-Level Setup)</li>
+  <li>Phase 2 — Hierarchy Skeleton</li>
+  <li>Phase 3 — IAM Simulation Groups</li>
+  <li>Phase 4 — Test Users and Initial Membership</li>
+  <li>Phase 5 — Approach 1 Configuration (Hybrid)</li>
+  <li>Phase 6 — Approach 2 Configuration (Target)</li>
+  <li>Phase 7 — Branch, Tag, and Environment Protection</li>
+  <li>Phase 8 — Baseline Role Tests</li>
+  <li>Phase 9 — Custom Role Tests</li>
+  <li>Phase 10 — Inner Sourcing and Confidential Tests</li>
+  <li>Phase 11 — Zone-Level Policy Inheritance</li>
+  <li>Phase 12 — CI/CD Access Scenarios</li>
+  <li>Phase 13 — Migration from Approach 1 to Approach 2</li>
+  <li>Phase 14 — Final Verification and Report</li>
+</ol>
+
+<hr>
+
+<h2>1. Prerequisites and Preparation</h2>
+
+<h3>1.1 Access Required</h3>
+
+<ul class="checklist">
+  <li><strong>Instance Admin</strong> access on the GitLab instance (required for creating Custom Roles).</li>
+  <li>If Admin is not available, confirm Custom Roles have been pre-created by the Admin team and skip Phase 1.</li>
+  <li>A dedicated top-level group where you are Owner. This guide assumes the group is named <code>acme-poc</code>. Adjust names if yours differs.</li>
+</ul>
+
+<h3>1.2 Test User Accounts</h3>
+
+<p>You need 8 test user accounts in the GitLab instance. If LDAP self-registration is not available, ask the platform team to create these, or use email plus-addressing (<code>yourname+alice@example.com</code>) if the instance allows.</p>
+
+<table>
+<thead><tr><th>Username</th><th>Persona</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td><code>poc-alice</code></td><td>Developer</td><td>Tests write access</td></tr>
+<tr><td><code>poc-bob</code></td><td>Maintainer / tech lead</td><td>Tests merge and settings</td></tr>
+<tr><td><code>poc-carol</code></td><td>Operator (SRE)</td><td>Tests prod deploys</td></tr>
+<tr><td><code>poc-paul</code></td><td>Promoter</td><td>Tests promotion pipelines</td></tr>
+<tr><td><code>poc-sam</code></td><td>Security Manager</td><td>Tests waivers and approvals</td></tr>
+<tr><td><code>poc-rita</code></td><td>Reporter</td><td>Tests read-only access</td></tr>
+<tr><td><code>poc-dan</code></td><td>Inner-source contributor</td><td>Tests fork-and-MR flow</td></tr>
+<tr><td><code>poc-con</code></td><td>Confidential reader</td><td>Tests restricted-only access</td></tr>
+</tbody>
+</table>
+
+<h3>1.3 Tools on Your Machine</h3>
+
+<ul class="checklist">
+  <li>Web browser with support for multiple profiles or private windows. You will need to be logged in as multiple users at once.</li>
+  <li>Git installed locally with SSH keys configured for each test user.</li>
+  <li>A screenshot tool. Every blocked action should be captured for the final report.</li>
+  <li>A note-taking document to log observations during execution.</li>
+</ul>
+
+<h3>1.4 Browser Profile Setup</h3>
+
+<p>Before starting, set up isolated browser sessions so you can operate as multiple users concurrently:</p>
+
+<ul class="checklist">
+  <li>Main profile — logged in as yourself (PoC operator / Owner).</li>
+  <li>Profile or private window 2 — <code>poc-alice</code>.</li>
+  <li>Profile or private window 3 — <code>poc-bob</code>.</li>
+  <li>Profile or private window 4 — <code>poc-carol</code>.</li>
+  <li>Additional profiles for Paul, Sam, Rita, Dan, Con as needed (or reuse by logging out).</li>
+</ul>
+
+<div class="callout-info">
+<strong>Tip:</strong> Chrome and Edge support persistent profile windows. Firefox has container tabs. Use whichever your workstation supports. Private/incognito windows work but lose sessions when closed.
+</div>
+
+<hr>
+
+<div class="phase-banner">PHASE 1 — Custom Roles (Instance-Level Setup)</div>
+
+<h2>2. Phase 1 — Custom Roles</h2>
+
+<p>Custom Roles must be created at the instance level before any group can use them. This phase requires Admin.</p>
+
+<h3>Step 1.1 — Open Custom Roles admin</h3>
+
+<div class="step">
+Navigate to <span class="nav">Admin Area → Custom Roles</span> (or <span class="nav">/admin/custom_roles</span>). Click <strong>New custom role</strong>.
+</div>
+
+<h3>Step 1.2 — Create Promoter role</h3>
+
+<div class="step">
+Fill in:
+<ul>
+  <li>Name: <code>Promoter</code></li>
+  <li>Description: "Triggers promotion pipelines; no write access"</li>
+  <li>Base role: <strong>Reporter</strong></li>
+</ul>
+Enable these abilities:
+<ul class="checklist">
+  <li><code>admin_cicd_variables</code></li>
+</ul>
+Do NOT enable: <code>push_code</code>, <code>admin_project</code>, <code>merge_merge_request</code>, <code>admin_group_member</code>.
+
+<div class="callout-info">
+<strong>Note (GitLab 18.x):</strong> The original design called for an <code>admin_pipeline</code> ability. That ability is not exposed by the Custom Roles API in 18.x — pipeline triggering is governed by base role + protected branch access. <code>admin_cicd_variables</code> on its own is sufficient for the Promoter use case (configure variables consumed by promotion jobs). The promotion <em>trigger</em> itself is handled by base Reporter + protected-branch allow-list.
+</div>
+<br><br>
+Click <strong>Create custom role</strong>.
+</div>
+
+<div class="expected">
+<strong>Check:</strong> The Custom Roles list shows "Promoter" with base Reporter and 1 custom ability.
+</div>
+
+<h3>Step 1.3 — Create Operator role</h3>
+
+<div class="step">
+Click <strong>New custom role</strong> again. Fill in:
+<ul>
+  <li>Name: <code>Operator</code></li>
+  <li>Description: "Manages prod environment and release branches; restricted via protected environment allow-lists"</li>
+  <li>Base role: <strong>Reporter</strong></li>
+</ul>
+Enable:
+<ul class="checklist">
+  <li><code>admin_protected_environments</code></li>
+  <li><code>admin_cicd_variables</code></li>
+  <li><code>read_runners</code></li>
+  <li><code>admin_runners</code></li>
+</ul>
+Do NOT enable: <code>push_code</code>, <code>admin_project</code>, <code>merge_merge_request</code>.
+
+<div class="callout-info">
+<strong>Note (GitLab 18.x):</strong> The original design named <code>admin_pipeline</code> + <code>admin_environment</code>. The 18.x API exposes <code>admin_protected_environments</code> (manage who can deploy where) and <code>admin_runners</code> (manage runner registration / pause). <code>admin_runners</code> requires <code>read_runners</code> as a prerequisite — the API rejects the create otherwise. Pipeline-trigger authority on prod still flows through the Operator's name being on the protected-environment allow-list (see Phase 7).
+</div>
+<br>
+Click <strong>Create custom role</strong>.
+</div>
+
+<h3>Step 1.4 — Create Security Manager role</h3>
+
+<div class="step">
+Click <strong>New custom role</strong>. Fill in:
+<ul>
+  <li>Name: <code>Security Manager</code></li>
+  <li>Description: "Manages vulnerability waivers and approves security-sensitive MRs"</li>
+  <li>Base role: <strong>Reporter</strong></li>
+</ul>
+Enable:
+<ul class="checklist">
+  <li><code>read_vulnerability</code></li>
+  <li><code>admin_vulnerability</code></li>
+  <li><code>admin_merge_request</code></li>
+</ul>
+Do NOT enable: <code>push_code</code>, <code>admin_project</code>, <code>merge_merge_request</code>.
+
+<div class="callout-info">
+<strong>Note (GitLab 18.x):</strong> The original design named <code>approve_merge_request</code>. The 18.x API exposes <code>admin_merge_request</code>, which covers approval and reviewer management without granting the merge action itself (still gated by <code>merge_merge_request</code>, which we explicitly do not enable). Net effect for the Security Manager use case is the same: Sam can approve security-sensitive MRs (e.g., CODEOWNERS-required <code>/infra/</code> paths) but cannot push or merge.
+</div>
+<br><br>
+Click <strong>Create custom role</strong>.
+</div>
+
+<div class="expected">
+<strong>Check:</strong> Admin Area → Custom Roles shows three roles: Promoter, Operator, Security Manager. Take a screenshot of this list for the final report.
+</div>
+
+<hr>
+
+<div class="phase-banner">PHASE 2 — Hierarchy Skeleton</div>
+
+<h2>3. Phase 2 — Hierarchy Skeleton</h2>
+
+<p>Build the deployment-zone hierarchy. You will not add projects or members yet — only the empty structure.</p>
+
+<h3>Step 2.1 — Create the top-level group</h3>
+
+<div class="step">
+Navigate to <span class="nav">New group → Create group</span>.
+<ul>
+  <li>Group name: <code>acme-poc</code></li>
+  <li>Group URL: <code>acme-poc</code></li>
+  <li>Visibility: <strong>Internal</strong></li>
+</ul>
+Click <strong>Create group</strong>.
+</div>
+
+<div class="callout-info">
+<strong>Why Internal at top:</strong> The design requires inner sourcing by default. Internal at the top enables any authenticated user to discover non-restricted projects. Sensitive subgroups will be switched to Private explicitly.
+</div>
+
+<h3>Step 2.2 — Create deployment-zone subgroups</h3>
+
+<div class="step">
+Inside <code>acme-poc</code>, create the following subgroups. For each: click <strong>New subgroup</strong>, set visibility to <strong>Internal</strong>.
+
+<ul>
+  <li><code>live-production</code></li>
+  <li><code>live-cloud-landing-zone</code></li>
+  <li><code>non-live-enterprise</code></li>
+  <li><code>iam-sim</code> — this will hold the simulated IAM groups. Set visibility to <strong>Private</strong>.</li>
+  <li><code>platform</code> — for shared CI templates. Internal.</li>
+</ul>
+</div>
+
+<div class="callout-info">
+<strong>Scope note:</strong> The design lists eight deployment zones. The PoC covers three of them (one live-production, one live-cloud, one non-live) to validate the pattern. Adding more zones later is a repeat of the same steps.
+</div>
+
+<h3>Step 2.3 — Create domain subgroups</h3>
+
+<div class="step">
+Under <code>live-production</code>, create:
+<ul>
+  <li><code>payments</code> (Internal)</li>
+  <li><code>trade</code> (Internal)</li>
+</ul>
+
+Under <code>live-cloud-landing-zone</code>, create:
+<ul>
+  <li><code>payments</code> (Internal) — same domain name, different zone; this is intentional and tests zone isolation</li>
+</ul>
+
+Under <code>non-live-enterprise</code>, create:
+<ul>
+  <li><code>payments</code> (Internal)</li>
+</ul>
+</div>
+
+<h3>Step 2.4 — Create restricted subgroups</h3>
+
+<div class="step">
+Inside <code>live-production/payments/</code>, create subgroup <code>restricted</code>. Set visibility to <strong>Private</strong>.
+
+<br><br>Repeat for <code>live-production/trade/restricted</code>.
+</div>
+
+<div class="callout-warn">
+<strong>Critical:</strong> The <code>restricted</code> subgroup itself must be Private, not just the projects inside it. This is the only way to make confidential projects invisible to users with access to the parent domain. This was a specific finding from the PoC design.
+</div>
+
+<h3>Step 2.5 — Create projects</h3>
+
+<div class="step">
+Under <code>live-production/payments/</code>, create blank projects (each initialised with a README):
+<ul>
+  <li><code>api</code></li>
+  <li><code>ui</code></li>
+  <li><code>batch</code></li>
+</ul>
+
+Under <code>live-production/payments/restricted/</code>:
+<ul>
+  <li><code>payments-secrets</code></li>
+</ul>
+
+Under <code>live-production/trade/</code>:
+<ul>
+  <li><code>orders</code></li>
+  <li><code>settlements</code></li>
+  <li><code>reconciliation</code></li>
+</ul>
+
+Under <code>platform/</code>:
+<ul>
+  <li><code>ci-templates</code></li>
+</ul>
+</div>
+
+<div class="expected">
+<strong>Check:</strong> Navigate to <code>acme-poc</code>. You should see all zones as immediate subgroups. Drilling into <code>live-production/payments</code> should show 3 projects plus a <code>restricted</code> subgroup. Take a screenshot of the group tree.
+</div>
+
+<hr>
+
+<div class="phase-banner">PHASE 3 — IAM Simulation Groups</div>
+
+<h2>4. Phase 3 — IAM Simulation Groups</h2>
+
+<p>Create the groups that simulate SSCAM, SailPoint, and P2P LDAP groups. These are just GitLab groups with specific naming — they have no special IAM properties in the PoC. They will be used as membership containers and shared with the real hierarchy at appropriate roles.</p>
+
+<h3>Step 3.1 — Create IAM subfolders</h3>
+
+<div class="step">
+Inside <code>acme-poc/iam-sim/</code>, create three subgroups (all Private):
+<ul>
+  <li><code>sscam</code> — for Approach 1 project-level groups</li>
+  <li><code>sailpoint</code> — for Approach 2 group-level groups</li>
+  <li><code>p2p</code> — for P2P DevOps role groups</li>
+</ul>
+</div>
+
+<h3>Step 3.2 — Create SSCAM groups</h3>
+
+<div class="step">
+Under <code>iam-sim/sscam/</code>, create these subgroups (all Private, no members yet):
+<ul>
+  <li><code>payments-api_w</code></li>
+  <li><code>payments-api_r</code></li>
+  <li><code>payments-ui_w</code></li>
+  <li><code>payments-ui_r</code></li>
+</ul>
+</div>
+
+<h3>Step 3.3 — Create SailPoint groups</h3>
+
+<div class="step">
+Under <code>iam-sim/sailpoint/</code>, create:
+<ul>
+  <li><code>gl-payments-read</code></li>
+  <li><code>gl-payments-dev</code></li>
+  <li><code>gl-payments-maint</code></li>
+  <li><code>gl-payments-owner</code></li>
+  <li><code>gl-trade-read</code></li>
+  <li><code>gl-trade-dev</code></li>
+  <li><code>gl-trade-maint</code></li>
+  <li><code>gl-trade-owner</code></li>
+  <li><code>gl-restricted-read</code></li>
+</ul>
+</div>
+
+<h3>Step 3.4 — Create P2P DevOps groups</h3>
+
+<div class="step">
+Under <code>iam-sim/p2p/</code>, create:
+<ul>
+  <li><code>P2P_GS_DevOps_payments_Promoter</code></li>
+  <li><code>P2P_GS_DevOps_payments_Operator</code></li>
+  <li><code>P2P_GS_DevOps_payments_SecurityManager</code></li>
+  <li><code>P2P_GS_DevOps_payments_Maintainer</code></li>
+  <li><code>P2P_GS_DevOps_payments_Developer</code></li>
+  <li><code>P2P_GS_DevOps_payments_Reporter</code></li>
+  <li><code>P2P_GS_DevOps_Owner</code></li>
+</ul>
+</div>
+
+<div class="expected">
+<strong>Check:</strong> Navigate to <code>iam-sim/</code>. You should see three subfolders with many empty groups inside. These are the simulated LDAP groups.
+</div>
+
+<hr>
+
+<div class="phase-banner">PHASE 4 — Test Users and Initial Membership</div>
+
+<h2>5. Phase 4 — Test Users and Initial Membership</h2>
+
+<p>Invite the 8 test users into the simulated IAM groups. This establishes who-is-in-which-role before any sharing to the real hierarchy.</p>
+
+<h3>Step 4.1 — Invite users into SSCAM groups</h3>
+
+<div class="step">
+Navigate to <code>iam-sim/sscam/payments-api_w</code>. Go to <span class="nav">Manage → Members → Invite members</span>.
+<ul>
+  <li>Invite <code>poc-alice</code> as Developer.</li>
+</ul>
+
+Navigate to <code>iam-sim/sscam/payments-api_r</code>. Invite <code>poc-rita</code> as Reporter.
+
+<br><br>Leave <code>payments-ui_w</code> and <code>payments-ui_r</code> empty for now (used later in migration tests).
+</div>
+
+<div class="callout-info">
+<strong>Note on the role here:</strong> The role you assign <em>inside</em> the IAM-sim group does not matter much for the PoC — what matters is how the group is shared with the real hierarchy. But assigning Developer/Reporter here mirrors what production LDAP Group Sync would do.
+</div>
+
+<h3>Step 4.2 — Invite users into SailPoint groups</h3>
+
+<div class="step">
+Invite members as follows:
+<ul>
+  <li><code>gl-payments-dev</code> — <code>poc-alice</code> as Developer</li>
+  <li><code>gl-payments-read</code> — <code>poc-rita</code> as Reporter</li>
+  <li><code>gl-payments-maint</code> — <code>poc-bob</code> as Maintainer</li>
+  <li><code>gl-trade-dev</code> — a designated trade test user (can reuse Alice for brevity, or use another account)</li>
+  <li><code>gl-restricted-read</code> — <code>poc-con</code> as Reporter</li>
+</ul>
+</div>
+
+<h3>Step 4.3 — Invite users into P2P groups</h3>
+
+<div class="step">
+Invite members:
+<ul>
+  <li><code>P2P_GS_DevOps_payments_Promoter</code> — <code>poc-paul</code> as Developer</li>
+  <li><code>P2P_GS_DevOps_payments_Operator</code> — <code>poc-carol</code> as Developer</li>
+  <li><code>P2P_GS_DevOps_payments_SecurityManager</code> — <code>poc-sam</code> as Developer</li>
+  <li><code>P2P_GS_DevOps_payments_Maintainer</code> — <code>poc-bob</code> as Maintainer</li>
+  <li><code>P2P_GS_DevOps_payments_Developer</code> — <code>poc-alice</code> as Developer</li>
+  <li><code>P2P_GS_DevOps_payments_Reporter</code> — <code>poc-rita</code> as Reporter</li>
+</ul>
+</div>
+
+<h3>Step 4.4 — Invite Dan at top level only</h3>
+
+<div class="step">
+Navigate to <code>acme-poc</code> (top-level). Invite <code>poc-dan</code> as <strong>Minimal Access</strong>. This simulates someone in the broader organisation who has no specific grant but can discover Internal projects.
+</div>
+
+<div class="expected">
+<strong>Check:</strong> Log in as <code>poc-alice</code> in a separate browser profile. Navigate to <code>acme-poc</code>. Alice should see the Internal subgroups (live-production, live-cloud, etc.) but no projects inherited yet, because nothing has been shared with real projects yet. She should also see the IAM-sim groups she is a member of.
+</div>
+
+<hr>
+
+<div class="phase-banner">PHASE 5 — Approach 1 Configuration (Hybrid)</div>
+
+<h2>6. Phase 5 — Approach 1 Configuration</h2>
+
+<p>Wire up the hybrid pattern on <code>payments/api</code>. This mirrors Bitbucket-style per-project access with a minimal deployment-zone grouping.</p>
+
+<h3>Step 5.1 — Share SSCAM groups with payments/api</h3>
+
+<div class="step">
+Navigate to <code>acme-poc/live-production/payments/api → Manage → Members</code>. Click <strong>Invite a group</strong>.
+<ul>
+  <li>Group to invite: <code>acme-poc/iam-sim/sscam/payments-api_w</code></li>
+  <li>Max role: <strong>Developer</strong></li>
+</ul>
+Click <strong>Invite</strong>.
+
+<br><br>Repeat:
+<ul>
+  <li>Invite group: <code>acme-poc/iam-sim/sscam/payments-api_r</code></li>
+  <li>Max role: <strong>Reporter</strong></li>
+</ul>
+</div>
+
+<h3>Step 5.2 — Share optional SailPoint group at domain level</h3>
+
+<div class="step">
+Navigate to <code>live-production/payments → Manage → Members → Invite a group</code>.
+<ul>
+  <li>Invite group: <code>acme-poc/iam-sim/sailpoint/gl-payments-dev</code></li>
+  <li>Max role: <strong>Developer</strong></li>
+</ul>
+
+This represents the "optional product-level group" in Approach 1.
+</div>
+
+<h3>Step 5.3 — Share restricted-read with the restricted subgroup</h3>
+
+<div class="step">
+Navigate to <code>live-production/payments/restricted → Manage → Members → Invite a group</code>.
+<ul>
+  <li>Invite group: <code>acme-poc/iam-sim/sailpoint/gl-restricted-read</code></li>
+  <li>Max role: <strong>Reporter</strong></li>
+</ul>
+</div>
+
+<h3>Step 5.4 — Share Maintainer group at domain level</h3>
+
+<div class="step">
+Navigate to <code>live-production/payments → Manage → Members → Invite a group</code>.
+<ul>
+  <li>Invite group: <code>acme-poc/iam-sim/p2p/P2P_GS_DevOps_payments_Maintainer</code></li>
+  <li>Max role: <strong>Maintainer</strong></li>
+</ul>
+</div>
+
+<div class="expected">
+<strong>Check:</strong> Log in as Alice. She should now see <code>payments/api</code>, <code>payments/ui</code>, and <code>payments/batch</code> in her project list. She can access <code>api</code> as Developer via two paths (SSCAM direct + SailPoint domain-level). Log in as Con — he should see <code>payments-secrets</code> only. Log in as Dan — he should see non-restricted projects via Internal visibility but cannot write anywhere.
+</div>
+
+<hr>
+
+<div class="phase-banner">PHASE 6 — Approach 2 Configuration (Target)</div>
+
+<h2>7. Phase 6 — Approach 2 Configuration</h2>
+
+<p>Wire up the pure group-centric pattern on the <code>trade/</code> domain. No project-level sharing — everything at the domain.</p>
+
+<h3>Step 6.1 — Share SailPoint groups with trade domain</h3>
+
+<div class="step">
+Navigate to <code>acme-poc/live-production/trade → Manage → Members → Invite a group</code>. Add:
+<ul>
+  <li><code>gl-trade-read</code> as <strong>Reporter</strong></li>
+  <li><code>gl-trade-dev</code> as <strong>Developer</strong></li>
+  <li><code>gl-trade-maint</code> as <strong>Maintainer</strong></li>
+  <li><code>gl-trade-owner</code> as <strong>Owner</strong></li>
+</ul>
+
+Do NOT share any groups with <code>trade/orders</code>, <code>trade/settlements</code>, or <code>trade/reconciliation</code> directly. All access must come from inheritance.
+</div>
+
+<h3>Step 6.2 — Verify inheritance</h3>
+
+<div class="step">
+Ensure a test user (e.g., Alice) is a member of <code>gl-trade-dev</code>. Log in as Alice.
+</div>
+
+<div class="expected">
+<strong>Check:</strong> Alice has Developer access on all three trade projects immediately, without any per-project configuration. The Members view on <code>trade/orders</code> shows access "inherited from trade" for Alice.
+</div>
+
+<h3>Step 6.3 — Test new-project auto-inheritance</h3>
+
+<div class="step">
+As Owner, create a fourth project <code>trade-reports</code> under <code>trade/</code>. Do not configure any members.
+</div>
+
+<div class="expected">
+<strong>Check:</strong> Alice has Developer access on <code>trade-reports</code> immediately. This proves the core scalability benefit of Approach 2: new projects inherit the domain's access automatically.
+</div>
+
+<hr>
+
+<div class="phase-banner">PHASE 7 — Branch, Tag, and Environment Protection</div>
+
+<h2>8. Phase 7 — Branch, Tag, and Environment Protection</h2>
+
+<p>Configure the protection rules that make roles meaningful. Apply to <code>payments/api</code> and <code>trade/orders</code> as the two primary test projects.</p>
+
+<h3>Step 7.1 — Protect main on payments/api</h3>
+
+<div class="step">
+Navigate to <code>payments/api → Settings → Repository → Protected branches</code>. For <code>main</code>:
+<ul>
+  <li>Allowed to merge: <strong>Maintainers</strong></li>
+  <li>Allowed to push and merge: <strong>No one</strong></li>
+  <li>Allowed to force push: <strong>No</strong></li>
+  <li>Require approval from code owners: <strong>On</strong></li>
+</ul>
+</div>
+
+<h3>Step 7.2 — Configure approval rules</h3>
+
+<div class="step">
+Navigate to <code>Settings → Merge requests</code>. Under Merge request approvals:
+<ul>
+  <li>Prevent approval by author: <strong>On</strong></li>
+  <li>Prevent approvals by users who add commits: <strong>On</strong></li>
+  <li>Remove all approvals when commits are added: <strong>On</strong></li>
+</ul>
+
+Add an approval rule:
+<ul>
+  <li>Name: "Default"</li>
+  <li>Required approvals: <strong>1</strong></li>
+  <li>Approvers: <code>acme-poc/iam-sim/p2p/P2P_GS_DevOps_payments_Maintainer</code></li>
+</ul>
+</div>
+
+<h3>Step 7.3 — Add CODEOWNERS</h3>
+
+<div class="step">
+As <code>poc-bob</code> (Maintainer), add a <code>CODEOWNERS</code> file at the root of <code>payments/api</code>:
+
+<pre><code>*                @acme-poc/iam-sim/p2p/P2P_GS_DevOps_payments_Maintainer
+/infra/          @acme-poc/iam-sim/p2p/P2P_GS_DevOps_payments_SecurityManager
+/.gitlab-ci.yml  @acme-poc/iam-sim/p2p/P2P_GS_DevOps_payments_Maintainer
+</code></pre>
+Commit directly to main.
+</div>
+
+<h3>Step 7.4 — Protect tags</h3>
+
+<div class="step">
+Navigate to <code>Settings → Repository → Protected tags</code>. Add:
+<ul>
+  <li>Tag pattern: <code>v*</code></li>
+  <li>Allowed to create: <strong>Maintainers</strong></li>
+</ul>
+</div>
+
+<h3>Step 7.5 — Create protected environments</h3>
+
+<div class="step">
+Navigate to <code>Settings → CI/CD → Protected environments</code>. Add:
+
+<strong>staging:</strong>
+<ul>
+  <li>Allowed to deploy: Developers + Maintainers</li>
+</ul>
+
+<strong>prod:</strong>
+<ul>
+  <li>Allowed to deploy: <code>poc-carol</code> directly (representing the Operator user list)</li>
+  <li>Required approvals: <strong>1</strong></li>
+  <li>Approvers: <code>poc-bob</code> (or the Maintainer group)</li>
+</ul>
+
+Note: the "prod" environment must be created before it can be protected. Create it via <code>Operate → Environments → New environment</code> first.
+</div>
+
+<h3>Step 7.6 — Add a minimal pipeline to payments/api</h3>
+
+<div class="step">
+As Bob, add <code>.gitlab-ci.yml</code> to payments/api:
+
+<pre><code>stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  script:
+    - echo "Building..."
+
+deploy_staging:
+  stage: deploy
+  script:
+    - echo "Deploying to staging"
+  environment:
+    name: staging
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+deploy_prod:
+  stage: deploy
+  script:
+    - echo "Deploying to PROD"
+  environment:
+    name: prod
+  rules:
+    - if: $CI_COMMIT_TAG
+  when: manual
+</code></pre>
+
+Commit to main.
+</div>
+
+<h3>Step 7.7 — Repeat on trade/orders</h3>
+
+<div class="step">
+Repeat steps 7.1–7.6 on <code>trade/orders</code>, substituting the trade SailPoint groups in approval rules and CODEOWNERS. This gives you two fully protected projects — one under each approach.
+</div>
+
+<hr>
+
+<div class="phase-banner">PHASE 8 — Baseline Role Tests</div>
+
+<h2>9. Phase 8 — Baseline Role Tests</h2>
+
+<p>Verify that standard roles (Developer, Maintainer, Reporter) behave correctly on <code>payments/api</code>.</p>
+
+<h3>Step 8.1 — Alice pushes a feature branch</h3>
+
+<div class="step">
+In Alice's browser profile:
+<pre><code>git clone git@&lt;gitlab-host&gt;:acme-poc/live-production/payments/api.git
+cd api
+git checkout -b alice-feature-1
+echo "change" &gt;&gt; test.txt
+git add test.txt
+git commit -m "feat: alice change"
+git push origin alice-feature-1</code></pre>
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Push succeeds. Screenshot not needed.
+</div>
+
+<h3>Step 8.2 — Alice attempts direct push to main</h3>
+
+<div class="step">
+As Alice:
+<pre><code>git checkout main
+git pull
+echo "direct" &gt;&gt; test.txt
+git commit -am "direct to main"
+git push origin main</code></pre>
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Rejected with "You are not allowed to push code to protected branches on this project." <strong>Screenshot.</strong>
+</div>
+
+<h3>Step 8.3 — MR flow: self-approval blocked</h3>
+
+<div class="step">
+Alice opens an MR from <code>alice-feature-1</code> to <code>main</code>. Tries to approve.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Approve button disabled or missing. <strong>Screenshot.</strong>
+</div>
+
+<h3>Step 8.4 — Merge not available to Developer</h3>
+
+<div class="step">
+Alice looks for a Merge button.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Not available. Alice is Developer and main requires Maintainer.
+</div>
+
+<h3>Step 8.5 — Bob approves and merges</h3>
+
+<div class="step">
+In Bob's browser profile, open the same MR. Approve, then merge.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> MR merges successfully.
+</div>
+
+<h3>Step 8.6 — Protected tag test</h3>
+
+<div class="step">
+As Alice:
+<pre><code>git checkout main
+git pull
+git tag v0.1
+git push origin v0.1</code></pre>
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Rejected — Alice cannot create v* tags. <strong>Screenshot.</strong>
+</div>
+
+<div class="step">
+As Bob, repeat. Tag should push successfully.
+</div>
+
+<h3>Step 8.7 — Prod deploy authorization</h3>
+
+<div class="step">
+Bob's tag push triggers a pipeline with the manual <code>deploy_prod</code> job. Navigate to the pipeline.
+
+<br><br>As Alice, find the play button on <code>deploy_prod</code>.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Play button disabled — Alice is not on the prod environment deploy list. <strong>Screenshot.</strong>
+</div>
+
+<div class="step">
+As Carol, play <code>deploy_prod</code>.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Job enters "waiting for approval" state.
+</div>
+
+<div class="step">
+As Bob, navigate to <code>Operate → Environments → prod → Deployments</code>. Approve the pending deployment.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Deploy proceeds to completion. <strong>Screenshot the full pipeline view.</strong>
+</div>
+
+<hr>
+
+<div class="phase-banner">PHASE 9 — Custom Role Tests</div>
+
+<h2>10. Phase 9 — Custom Role Tests</h2>
+
+<p>Validate each of the three custom roles. Requires that Phase 1 was completed and the roles exist.</p>
+
+<h3>Step 9.1 — Assign custom roles to IAM groups</h3>
+
+<div class="step">
+Navigate to <code>payments/api → Manage → Members → Invite a group</code>. Add each:
+<ul>
+  <li><code>P2P_GS_DevOps_payments_Promoter</code> with custom role <strong>Promoter</strong></li>
+  <li><code>P2P_GS_DevOps_payments_Operator</code> with custom role <strong>Operator</strong></li>
+  <li><code>P2P_GS_DevOps_payments_SecurityManager</code> with custom role <strong>Security Manager</strong></li>
+</ul>
+</div>
+
+<div class="callout-info">
+<strong>Note:</strong> In the Invite dialog, select the custom role name from the role dropdown. It appears alongside the built-in roles.
+</div>
+
+<h3>Step 9.2 — Test Promoter</h3>
+
+<div class="step">
+Add a promotion job to <code>.gitlab-ci.yml</code> (as Bob):
+
+<pre><code>promote_to_staging:
+  stage: deploy
+  script:
+    - echo "Promoting artifact"
+  environment:
+    name: staging
+  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"</code></pre>
+
+Push to main. Pipeline runs with manual promotion job.
+
+<br><br>As Paul (Promoter), play <code>promote_to_staging</code>.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Paul can trigger the promotion job. Then try as Paul: push to a feature branch (rejected — no push_code ability), merge an MR (no merge button), edit settings (blocked). <strong>Screenshot each rejection.</strong>
+</div>
+
+<h3>Step 9.3 — Test Operator (layered restriction)</h3>
+
+<div class="step">
+As Carol (Operator), navigate to <code>payments/api</code>. Confirm she has the Operator custom role on the project via Members view.
+
+<br><br>Test 1: Play the <code>deploy_prod</code> job on a tag pipeline. Expected to succeed (she is in the prod environment allow-list configured in Phase 7).
+
+<br><br>Test 2: Push a feature branch. Expected to fail — Operator lacks <code>push_code</code>.
+
+<br><br>Test 3: Attempt to deploy via the <code>staging</code> environment. Expected to fail because <code>staging</code>'s protected environment list does not include Carol. This demonstrates the layered restriction: Custom Role grants capability in principle, but protected environment allow-lists scope where she can actually act.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> All three results as described. <strong>Screenshot Test 1 success and Test 2/3 rejections.</strong>
+</div>
+
+<h3>Step 9.4 — Test Security Manager</h3>
+
+<div class="step">
+As Sam (Security Manager):
+
+<br><br>Test 1: Navigate to <code>payments/api → Secure → Vulnerability report</code>. Expected to see the dashboard (even if empty).
+
+<br><br>Test 2: If any vulnerability is present (generate one by committing a <code>.gitleaks.toml</code> test secret), dismiss it with a justification. Expected to succeed.
+
+<br><br>Test 3: Alice opens an MR touching <code>/infra/</code>. CODEOWNERS requires Security Manager approval. Sam approves the MR. Expected to succeed — <code>admin_merge_request</code> ability is enabled (covers MR approval; merge itself remains gated by Maintainer).
+
+<br><br>Test 4: Sam tries to push code. Expected to fail.
+
+<br><br>Test 5: Sam tries to merge an MR himself (using the merge button). Expected to fail — merge requires push_code + merge_merge_request, neither of which are granted.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Sam can waive and approve, but cannot write code. <strong>Screenshot.</strong>
+</div>
+
+<hr>
+
+<div class="phase-banner">PHASE 10 — Inner Sourcing and Confidential Tests</div>
+
+<h2>11. Phase 10 — Inner Sourcing and Confidential Tests</h2>
+
+<h3>Step 10.1 — Dan discovers and forks</h3>
+
+<div class="step">
+As <code>poc-dan</code> (Minimal Access at top level), navigate to GitLab search and search for "payments api". Confirm the project appears. Open it. Click <strong>Fork</strong> and fork into Dan's personal namespace.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Fork succeeds. Dan has a copy at <code>dan/api</code>.
+</div>
+
+<h3>Step 10.2 — Dan contributes via MR</h3>
+
+<div class="step">
+As Dan:
+<pre><code>git clone git@&lt;gitlab-host&gt;:poc-dan/api.git
+cd api
+git checkout -b dan-contribution
+echo "Dan's contribution" &gt;&gt; CONTRIBUTORS.md
+git add CONTRIBUTORS.md
+git commit -m "Add contributor"
+git push origin dan-contribution</code></pre>
+
+Then on the fork project page, open a merge request targeting the upstream <code>acme-poc/live-production/payments/api:main</code>.
+</div>
+
+<h3>Step 10.3 — Dan cannot push to upstream</h3>
+
+<div class="step">
+As Dan:
+<pre><code>git remote add upstream git@&lt;gitlab-host&gt;:acme-poc/live-production/payments/api.git
+git push upstream dan-contribution</code></pre>
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Rejected. <strong>Screenshot.</strong>
+</div>
+
+<h3>Step 10.4 — Bob merges the MR</h3>
+
+<div class="step">
+As Bob, review and merge Dan's MR.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> MR merges. Dan's change is on upstream main without Dan ever having write access.
+</div>
+
+<h3>Step 10.5 — Confidential project invisibility</h3>
+
+<div class="step">
+As Dan, search for "payments-secrets". As Alice (Developer on payments), search for the same.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Neither Dan nor Alice can find <code>payments-secrets</code>. The <code>restricted/</code> Private subgroup hides it from everyone not explicitly granted.
+</div>
+
+<h3>Step 10.6 — Con sees only restricted</h3>
+
+<div class="step">
+As Con, navigate to <code>live-production/payments</code>.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Con sees only <code>payments-secrets</code> (via <code>gl-restricted-read</code>). He does NOT see <code>api</code>, <code>ui</code>, or <code>batch</code> unless they are Internal-visible to him, which depends on whether <code>payments</code> itself is Internal to Con. Adjust as needed to match the design intent.
+</div>
+
+<hr>
+
+<div class="phase-banner">PHASE 11 — Zone-Level Policy Inheritance</div>
+
+<h2>12. Phase 11 — Zone-Level Policy Inheritance</h2>
+
+<p>The design's headline benefit — enforce policy once at the zone level and have it inherit — is validated here.</p>
+
+<h3>Step 11.1 — Set a zone-level CI/CD variable</h3>
+
+<div class="step">
+Navigate to <code>acme-poc/live-production → Settings → CI/CD → Variables → Add variable</code>.
+<ul>
+  <li>Key: <code>PROD_DEPLOY_TOKEN</code></li>
+  <li>Value: <code>zone-secret-value-live-prod</code></li>
+  <li>Protect variable: <strong>On</strong></li>
+  <li>Mask variable: <strong>On</strong></li>
+  <li>Environment scope: <code>prod</code></li>
+</ul>
+</div>
+
+<h3>Step 11.2 — Register a zone-scoped runner</h3>
+
+<div class="step">
+Navigate to <code>live-production → Build → Runners → New group runner</code>.
+<ul>
+  <li>Tag: <code>live-prod-runner</code></li>
+  <li>Run untagged jobs: <strong>Off</strong></li>
+  <li>Protected: <strong>On</strong></li>
+</ul>
+Register it on any available host (a Docker container works for the PoC).
+</div>
+
+<h3>Step 11.3 — Verify inheritance to payments/api and trade/orders</h3>
+
+<div class="step">
+Add a debug job to <code>payments/api</code> <code>.gitlab-ci.yml</code>:
+
+<pre><code>debug_prod_token:
+  stage: build
+  tags:
+    - live-prod-runner
+  script:
+    - echo "TOKEN is ${PROD_DEPLOY_TOKEN:-empty}"
+  environment:
+    name: prod
+  rules:
+    - if: $CI_COMMIT_TAG</code></pre>
+
+Push a v* tag.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> The job picks up on the live-prod-runner and the token value is present (masked in logs, but non-empty).
+</div>
+
+<h3>Step 11.4 — Verify non-live does NOT inherit</h3>
+
+<div class="step">
+Create a project <code>non-live-enterprise/payments/test-service</code>. Add the same debug job.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> The job does NOT pick up on <code>live-prod-runner</code> (it is group-scoped to live-production and will remain pending). The <code>PROD_DEPLOY_TOKEN</code> is empty in the log. Confirms zone isolation.
+</div>
+
+<h3>Step 11.5 — Add a new project mid-test</h3>
+
+<div class="step">
+Create <code>live-production/payments/reporting</code>. Add the same debug job.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> The new project immediately has access to the zone runner and variable with no additional configuration. This is the core inheritance proof.
+</div>
+
+<hr>
+
+<div class="phase-banner">PHASE 12 — CI/CD Access Scenarios</div>
+
+<h2>13. Phase 12 — CI/CD Access Scenarios</h2>
+
+<p>Run the nine CI/CD scenarios. Each has a short script; expected outcomes are detailed in the PoC report.</p>
+
+<h3>Step 12.1 — Scenario A: Protected variable on feature branch</h3>
+
+<div class="step">
+As Alice, push a commit to a feature branch. Watch the debug_prod_token job log (or equivalent).
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Token empty — protected variables do not leak to feature branches.
+</div>
+
+<h3>Step 12.2 — Scenario B: Manual job without environment</h3>
+
+<div class="step">
+Add a manual job without environment declaration:
+<pre><code>adhoc_task:
+  stage: deploy
+  script:
+    - echo "ad-hoc"
+  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"</code></pre>
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Alice (Developer) CAN play this job. Without environment protection, only role-level gating applies. Contrast with deploy_prod (which Alice cannot play).
+</div>
+
+<h3>Step 12.3 — Scenario C: Fork pipeline isolation</h3>
+
+<div class="step">
+Dan opens another MR from his fork that includes a debug_prod_token step. Configure <code>Settings → Merge requests → Fork MR pipelines</code> to require approval. Bob approves the fork pipeline to run.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Dan's fork pipeline runs, but PROD_DEPLOY_TOKEN is empty in the output. Fork isolation is preserved regardless of approval.
+</div>
+
+<h3>Step 12.4 — Scenario D: CI_JOB_TOKEN allowlist</h3>
+
+<div class="step">
+Create a project <code>trade/orders</code> that attempts to clone <code>payments/api</code> using <code>CI_JOB_TOKEN</code>:
+<pre><code>test_token:
+  script:
+    - git clone "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/acme-poc/live-production/payments/api.git"</code></pre>
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Clone fails with 403. Add <code>trade/orders</code> to <code>payments/api → Settings → CI/CD → Job token permissions → Allowlist</code>. Retry. Clone now succeeds.
+</div>
+
+<h3>Step 12.5 — Scenario E: Runner scoping (already validated in Step 11.4)</h3>
+
+<h3>Step 12.6 — Scenario F: Developer cannot access CI/CD settings</h3>
+
+<div class="step">
+As Alice, navigate to <code>payments/api → Settings → CI/CD → Variables</code>.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Variables section not visible or read-only. Similarly for Runners and Protected branches. <strong>Screenshot.</strong>
+</div>
+
+<h3>Step 12.7 — Scenario G: Scheduled pipeline owner</h3>
+
+<div class="step">
+As Bob, create a schedule on <code>payments/api</code> running every hour. Later, reduce Bob's role to Reporter in the IAM group and observe the schedule's next run.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Jobs requiring Maintainer (like deploy) fail at runtime because the schedule runs as its owner. Transfer ownership to another Maintainer to restore. Restore Bob's role before moving on.
+</div>
+
+<h3>Step 12.8 — Scenario H: Group-level variable inheritance</h3>
+
+<div class="step">
+Add a variable at <code>live-production/payments/</code> level. Confirm it is visible in <code>api</code>, <code>ui</code>, and <code>batch</code>. Add a project-level variable with the same key in <code>api</code>. Confirm project value overrides.
+</div>
+
+<h3>Step 12.9 — Scenario I: Environment-scoped same-key variables</h3>
+
+<div class="step">
+Add <code>API_KEY=staging-val</code> scoped to <code>staging</code>, and <code>API_KEY=prod-val</code> scoped to <code>prod</code>. Run jobs in each environment. Confirm each sees its own value.
+</div>
+
+<hr>
+
+<div class="phase-banner">PHASE 13 — Migration from Approach 1 to Approach 2</div>
+
+<h2>14. Phase 13 — Migration from Approach 1 to Approach 2</h2>
+
+<p>Migrate <code>payments/api</code> from project-level SSCAM access to domain-level SailPoint access, with no user outage.</p>
+
+<h3>Step 13.1 — Capture before-state</h3>
+
+<div class="step">
+Document Alice's current access paths on <code>payments/api</code>. From the Members view, screenshot her entry showing access via <code>payments-api_w</code> (SSCAM direct share at project level) and via <code>gl-payments-dev</code> (SailPoint share at domain level, inherited).
+</div>
+
+<h3>Step 13.2 — Parallel-grant phase</h3>
+
+<div class="step">
+Confirm <code>gl-payments-dev</code> is already shared with <code>payments/</code> domain (done in Phase 5). Confirm Alice is a member. No new action needed — the parallel state is already in place.
+
+<br><br>As Alice, log out and log back in. Confirm she can still push a feature branch.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Alice's access is uninterrupted. Two paths to the same access are live.
+</div>
+
+<h3>Step 13.3 — Remove SSCAM project-level shares</h3>
+
+<div class="step">
+Navigate to <code>payments/api → Manage → Members</code>. Remove the shared groups <code>payments-api_w</code> and <code>payments-api_r</code>.
+</div>
+
+<h3>Step 13.4 — Validate post-removal</h3>
+
+<div class="step">
+As Alice, log out, log back in. Attempt to push a branch.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Push succeeds. Alice retains access via the SailPoint domain-level grant. <strong>Screenshot the Members page showing Alice's access now comes only from inheritance.</strong>
+</div>
+
+<h3>Step 13.5 — Break-test</h3>
+
+<div class="step">
+Temporarily remove Alice from <code>gl-payments-dev</code>. As Alice, try to push.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Push rejected — confirms access flows only through the SailPoint group post-migration. Re-add Alice to <code>gl-payments-dev</code> to restore.
+</div>
+
+<h3>Step 13.6 — Decommission SSCAM groups</h3>
+
+<div class="step">
+Navigate to <code>iam-sim/sscam/payments-api_w</code> and <code>payments-api_r</code>. Remove all members and delete the groups.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Groups deleted cleanly. No orphan members. Migration complete.
+</div>
+
+<hr>
+
+<div class="phase-banner">PHASE 14 — Final Verification and Report</div>
+
+<h2>15. Phase 14 — Final Verification and Report</h2>
+
+<h3>Step 14.1 — Audit log review</h3>
+
+<div class="step">
+Navigate to <code>acme-poc → Secure → Audit events</code>. Scroll through the events generated during the PoC.
+</div>
+
+<div class="expected">
+<strong>Expected:</strong> Events for group creation, member additions, role changes, branch protection changes, deploy approvals, and migration actions are all logged with actor and timestamp. Screenshot a representative slice.
+</div>
+
+<h3>Step 14.2 — Screenshot collation</h3>
+
+<div class="step">
+Gather all screenshots captured during the PoC into a single folder organised by phase. Each blocked action, each allowed action, and each configuration screen that was set up.
+</div>
+
+<h3>Step 14.3 — Fill in the success criteria table</h3>
+
+<div class="step">
+Using the PoC Report template, fill in each of the 32 success criteria with Pass / Fail / Partial and reference the screenshot evidence.
+</div>
+
+<h3>Step 14.4 — Write the observations</h3>
+
+<div class="step">
+Note any deviations from expected behaviour, any configurations that required unusual steps, and any operational patterns worth recording (e.g., the Operator layered restriction, the Private restricted subgroup requirement, the migration's parallel-grant pattern).
+</div>
+
+<h3>Step 14.5 — Final recommendation</h3>
+
+<div class="step">
+Based on the results, produce a Go / Conditional Go / No-Go recommendation. If all 32 criteria passed, the design is validated. If any failed, document the gap and decide whether to proceed with remediation or revise the design.
+</div>
+
+<hr>
+
+<h2>Final Checklist</h2>
+
+<ul class="checklist">
+  <li>Three custom roles created at instance level</li>
+  <li>Full hierarchy constructed under <code>acme-poc</code></li>
+  <li>IAM simulation groups populated</li>
+  <li>All 8 test users invited and assigned to correct groups</li>
+  <li>Approach 1 wired on <code>payments/api</code></li>
+  <li>Approach 2 wired on <code>trade/</code> domain</li>
+  <li>Branch, tag, environment protection configured on both primary projects</li>
+  <li>Baseline role tests executed with screenshots</li>
+  <li>Three custom role tests executed with screenshots</li>
+  <li>Inner source and confidential tests executed</li>
+  <li>Zone-level policy inheritance validated</li>
+  <li>Nine CI/CD scenarios executed</li>
+  <li>Migration from Approach 1 to Approach 2 completed</li>
+  <li>Audit log reviewed and screenshot captured</li>
+  <li>All screenshots collated per phase</li>
+  <li>Success criteria table completed</li>
+  <li>Observations documented</li>
+  <li>Final recommendation written</li>
+</ul>
+
+<hr>
+
+<h2>Common Pitfalls</h2>
+
+<div class="callout-warn">
+<ul>
+  <li><strong>Custom Roles not appearing in role dropdown.</strong> Wait a minute after creating; the cache may need to refresh. If still missing, confirm the user creating the membership has permission to assign custom roles (Maintainer or higher on the group).</li>
+  <li><strong>Group sharing does not grant expected access.</strong> GitLab group sharing requires both: the sharing to be configured AND the recipient user to be a member of the shared group. Double-check both sides.</li>
+  <li><strong>Restricted projects visible to parent domain users.</strong> The <code>restricted</code> subgroup itself must be Private — not merely its projects.</li>
+  <li><strong>Protected variable visible on feature branch.</strong> Both the variable must be "Protected" AND the branch must be protected. Either missing and the variable is exposed.</li>
+  <li><strong>Environment-scoped variable not visible.</strong> The job must declare <code>environment: &lt;name&gt;</code> matching the variable's scope exactly. Wildcards match anything; specific scopes require exact match.</li>
+  <li><strong>Manual job playable by anyone with Developer role.</strong> Without an <code>environment:</code> declaration, only role gates apply. Add environment protection to restrict to specific users.</li>
+  <li><strong>Scheduled pipeline fails after role change.</strong> Schedules run as their owner's current role. Transfer ownership to a long-lived account before role changes.</li>
+  <li><strong>CI_JOB_TOKEN unexpectedly allows cross-project.</strong> On older GitLab versions the default was permissive. Check and tighten the allowlist per project.</li>
+  <li><strong>Fork pipeline does not run.</strong> Either fork pipelines are disabled or require approval. Check Settings → Merge requests → Fork MR pipelines.</li>
+  <li><strong>Session caching after role change.</strong> GitLab can cache permissions per session. After changing a user's role or group membership, have them log out and back in.</li>
+</ul>
+</div>
+
+<hr>
+
+<p><em>End of execution guide.</em></p>
+
+</body>
+</html>

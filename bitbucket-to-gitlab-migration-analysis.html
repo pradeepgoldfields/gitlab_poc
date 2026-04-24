@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bitbucket to GitLab Migration — Analysis</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; max-width: 960px; margin: 2em auto; padding: 0 1.5em; color: #000000; background: #ffffff; line-height: 1.6; }
+  h1 { font-size: 2em; border-bottom: 2px solid #0052cc; padding-bottom: 0.3em; }
+  h2 { font-size: 1.4em; margin-top: 2em; border-bottom: 1px solid #dfe1e6; padding-bottom: 0.2em; }
+  h3 { font-size: 1.15em; margin-top: 1.5em; color: #000000; }
+  h4 { font-size: 1.02em; margin-top: 1.2em; color: #000000; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  th, td { border: 1px solid #dfe1e6; padding: 0.5em 0.75em; text-align: left; vertical-align: top; }
+  th { background: #f4f5f7; font-weight: 600; }
+  pre { background: #f4f5f7; border: 1px solid #dfe1e6; border-radius: 3px; padding: 0.75em 1em; overflow-x: auto; font-size: 0.9em; }
+  code { background: #f4f5f7; padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.9em; }
+  pre code { background: none; padding: 0; }
+  .callout-info { border-left: 4px solid #0052cc; background: #deebff; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-warn { border-left: 4px solid #ff991f; background: #fffae6; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-success { border-left: 4px solid #00875a; background: #e3fcef; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-danger { border-left: 4px solid #de350b; background: #ffebe6; padding: 0.75em 1em; margin: 1em 0; }
+  .scenario { background: #f4f5f7; border-left: 4px solid #0052cc; padding: 0.75em 1em; margin: 1em 0; border-radius: 3px; }
+  .outcome { background: #e3fcef; border-left: 4px solid #00875a; padding: 0.5em 1em; margin: 0.5em 0 1em 0; border-radius: 3px; }
+  ul, ol { padding-left: 1.5em; }
+  li { margin: 0.3em 0; }
+  .diagram { text-align: center; margin: 1.5em 0; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .caption { font-size: 0.9em; color: #42526e; margin-top: 0.4em; font-style: italic; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>Bitbucket to GitLab Migration — Analysis</h1>
+
+<p><strong>Purpose:</strong> This analysis defines the migration strategy for moving from the existing Bitbucket platform to GitLab, aligned with the reference access model. It covers the target-state shape, the phased execution plan, and the concrete workstreams required to move repositories, history, access, CI/CD, integrations, and operational practices without disrupting delivery.</p>
+
+<p><strong>Audience:</strong> P2P platform engineering, DevOps leadership, application teams preparing for onboarding, IAM owners, and release managers responsible for the cutover.</p>
+
+<p><strong>Scope:</strong> End-to-end migration of source code, branches, tags, pull request history (where preserved), Bitbucket Pipelines / Jenkins jobs, Bitbucket access groups (<code>_r</code> / <code>_w</code>), webhooks, and downstream integrations. Two authorization approaches (hybrid transition → target group-centric) as defined in the reference design are used as the anchoring model — this analysis adds the <em>how</em> on top of the <em>what</em>.</p>
+
+<p><strong>Out of scope:</strong> Instance sizing / hardware procurement, SSO federation design (assumed provided), the broader Path-to-Production redesign, Jira / Confluence migration (handled separately).</p>
+
+<hr>
+
+<h2>Table of Contents</h2>
+<ol>
+  <li>Migration Principles</li>
+  <li>Current State (Bitbucket) vs Target State (GitLab)</li>
+  <li>Mapping Bitbucket Constructs to GitLab</li>
+  <li>Migration Phases (High-Level Plan)</li>
+  <li>Workstream A — Repository &amp; History Migration</li>
+  <li>Workstream B — Access &amp; LDAP Migration</li>
+  <li>Workstream C — CI/CD Pipeline Migration</li>
+  <li>Workstream D — Integrations, Webhooks, and Tooling</li>
+  <li>Cutover &amp; Freeze Strategy per Application</li>
+  <li>Rollback Strategy</li>
+  <li>Risks and Mitigations</li>
+  <li>Success Criteria</li>
+  <li>Recommended Wave Sequencing</li>
+</ol>
+
+<hr>
+
+<h2>1. Migration Principles</h2>
+
+<p>The migration is governed by the same core principles as the target access model (reference design), extended with migration-specific guardrails:</p>
+
+<ul>
+  <li><strong>No big-bang cutover.</strong> Applications migrate in waves. The two Bitbucket and GitLab platforms coexist during the transition.</li>
+  <li><strong>Preserve the audit chain.</strong> Git history (commits, branches, tags) is migrated verbatim. Pull request discussions are preserved where technically feasible; otherwise a read-only Bitbucket archive is kept accessible.</li>
+  <li><strong>Start with Approach 1, converge to Approach 2.</strong> On day one of an application's onboarding, reuse the Bitbucket <code>_r</code> / <code>_w</code> groups via SSCAM to avoid access-model changes colliding with the platform change. Move to the group-centric target model after the code has stabilised on GitLab.</li>
+  <li><strong>Freeze writes during cutover.</strong> Each application enters a short write-freeze on Bitbucket during the final sync. No merges, no tag pushes. Duration measured in hours, not days.</li>
+  <li><strong>Inner sourcing from day one.</strong> Non-confidential projects are Internal in GitLab from the moment they land. Confidential projects go into <code>restricted/</code> subgroups before the first push.</li>
+  <li><strong>CI/CD is re-platformed, not lifted.</strong> Bitbucket Pipelines and Jenkins configurations are rewritten to <code>.gitlab-ci.yml</code>. A direct copy is usually wrong — use the migration as an opportunity to apply the enterprise pipeline templates.</li>
+  <li><strong>Rollback is always available until decommissioning.</strong> Bitbucket remains readable and restorable per project until the project has been verified green on GitLab for the agreed soak period.</li>
+</ul>
+
+<hr>
+
+<h2>2. Current State (Bitbucket) vs Target State (GitLab)</h2>
+
+<div class="diagram">
+<svg viewBox="0 0 940 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Current state vs target state">
+  <style>
+    .bb { fill: #fffae6; stroke: #ff991f; stroke-width: 1.5; }
+    .gl { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .hdr { font-family: -apple-system, Arial, sans-serif; font-size: 14px; font-weight: 600; fill: #000; text-anchor: middle; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 10.5px; fill: #42526e; text-anchor: middle; }
+    .line { stroke: #6b778c; stroke-width: 1.2; fill: none; }
+    .arrow { stroke: #0052cc; stroke-width: 2; fill: none; marker-end: url(#blue-arrow); }
+  </style>
+  <defs>
+    <marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <polygon points="0 0, 10 5, 0 10" fill="#0052cc"/>
+    </marker>
+  </defs>
+
+  <!-- Left side: Bitbucket -->
+  <text x="200" y="25" class="hdr">Bitbucket (Current)</text>
+  <rect x="30" y="40" width="340" height="350" rx="8" fill="#fffef7" stroke="#ff991f" stroke-width="1"/>
+
+  <rect x="50" y="60" width="300" height="36" rx="5" class="bb"/>
+  <text x="200" y="82" class="lbl">Project: PAY (Payments)</text>
+
+  <rect x="70" y="110" width="260" height="30" rx="4" class="bb"/>
+  <text x="200" y="130" class="lbl-small">Repo: payments-api</text>
+  <rect x="70" y="145" width="260" height="30" rx="4" class="bb"/>
+  <text x="200" y="165" class="lbl-small">Repo: payments-ui</text>
+  <rect x="70" y="180" width="260" height="30" rx="4" class="bb"/>
+  <text x="200" y="200" class="lbl-small">Repo: payments-batch</text>
+
+  <rect x="50" y="230" width="300" height="30" rx="4" fill="#deebff" stroke="#0052cc"/>
+  <text x="200" y="250" class="lbl-small">LDAP: payments-api_w / payments-api_r</text>
+  <rect x="50" y="265" width="300" height="30" rx="4" fill="#deebff" stroke="#0052cc"/>
+  <text x="200" y="285" class="lbl-small">LDAP: payments-ui_w / payments-ui_r</text>
+
+  <rect x="50" y="310" width="300" height="28" rx="4" fill="#f4f5f7" stroke="#6b778c"/>
+  <text x="200" y="328" class="lbl-small">Bitbucket Pipelines (bitbucket-pipelines.yml)</text>
+  <rect x="50" y="345" width="300" height="28" rx="4" fill="#f4f5f7" stroke="#6b778c"/>
+  <text x="200" y="363" class="lbl-small">Jenkins jobs (freestyle + multibranch)</text>
+
+  <!-- Migration arrow -->
+  <path d="M 390 210 L 570 210" class="arrow"/>
+  <text x="480" y="200" class="lbl" style="fill:#0052cc; font-weight:600">Migration</text>
+  <text x="480" y="228" class="lbl-small">waves A → B → C</text>
+
+  <!-- Right side: GitLab -->
+  <text x="760" y="25" class="hdr">GitLab (Target)</text>
+  <rect x="580" y="40" width="340" height="350" rx="8" fill="#f5fff9" stroke="#00875a" stroke-width="1"/>
+
+  <rect x="600" y="60" width="300" height="36" rx="5" class="gl"/>
+  <text x="750" y="82" class="lbl">acme/live-production/payments/</text>
+
+  <rect x="620" y="110" width="260" height="30" rx="4" class="gl"/>
+  <text x="750" y="130" class="lbl-small">api (project)</text>
+  <rect x="620" y="145" width="260" height="30" rx="4" class="gl"/>
+  <text x="750" y="165" class="lbl-small">ui (project)</text>
+  <rect x="620" y="180" width="260" height="30" rx="4" class="gl"/>
+  <text x="750" y="200" class="lbl-small">batch (project)</text>
+
+  <rect x="600" y="230" width="300" height="30" rx="4" fill="#deebff" stroke="#0052cc"/>
+  <text x="750" y="250" class="lbl-small">Approach 1: SSCAM _w / _r (initial)</text>
+  <rect x="600" y="265" width="300" height="30" rx="4" fill="#deebff" stroke="#0052cc"/>
+  <text x="750" y="285" class="lbl-small">Approach 2: gl-payments-dev / -read (target)</text>
+
+  <rect x="600" y="310" width="300" height="28" rx="4" fill="#f4f5f7" stroke="#6b778c"/>
+  <text x="750" y="328" class="lbl-small">GitLab CI/CD (.gitlab-ci.yml + templates)</text>
+  <rect x="600" y="345" width="300" height="28" rx="4" fill="#f4f5f7" stroke="#6b778c"/>
+  <text x="750" y="363" class="lbl-small">Shared runners + group-scoped runners</text>
+</svg>
+<div class="caption">Figure 1 — Current Bitbucket layout on the left (flat project with repos, per-repo LDAP groups, mixed CI) and the target GitLab layout on the right (deployment-zone hierarchy with group-level access and a single CI platform).</div>
+</div>
+
+<hr>
+
+<h2>3. Mapping Bitbucket Constructs to GitLab</h2>
+
+<p>Most Bitbucket concepts have a direct or near-direct GitLab equivalent. The mismatches are where migration risk concentrates.</p>
+
+<table>
+<thead><tr><th>Bitbucket</th><th>GitLab</th><th>Notes / risk</th></tr></thead>
+<tbody>
+<tr><td>Project (e.g. <code>PAY</code>)</td><td>Group / subgroup (e.g. <code>payments/</code>)</td><td>Direct mapping. In GitLab the group hierarchy is deeper — the deployment-zone layer is added above the domain.</td></tr>
+<tr><td>Repository</td><td>Project</td><td>Direct 1:1.</td></tr>
+<tr><td>Branch permissions</td><td>Protected branches</td><td>Rules structure differs. Bitbucket "prevent rewriting" maps to GitLab "disallow force push".</td></tr>
+<tr><td>Default reviewers</td><td>CODEOWNERS + approval rules</td><td>Requires rewrite. A <code>CODEOWNERS</code> file lives in the repo; approval rules are project settings.</td></tr>
+<tr><td>Pull request</td><td>Merge request</td><td>Same concept. PR history can be exported but is not automatically imported by the built-in Bitbucket importer (see §5).</td></tr>
+<tr><td>Merge checks</td><td>Merge request approvals + status checks</td><td>Map per repo; some Bitbucket plugins have no GitLab equivalent.</td></tr>
+<tr><td>Bitbucket Pipelines (<code>bitbucket-pipelines.yml</code>)</td><td>GitLab CI (<code>.gitlab-ci.yml</code>)</td><td>Not automatically convertible. Rewrite required (see §7).</td></tr>
+<tr><td>Jenkins multibranch job</td><td>GitLab CI pipeline (native) <em>or</em> retained Jenkins via webhook</td><td>Recommend native migration; keep Jenkins only where plugins are blocking.</td></tr>
+<tr><td>Repository webhooks</td><td>Project/group webhooks</td><td>URL + secret re-enter; payload shape differs — downstream consumers may need updates.</td></tr>
+<tr><td>Personal / repository access tokens</td><td>Personal / project / group access tokens</td><td>Not transferable. Must be reissued. Rotate secrets stored in external systems.</td></tr>
+<tr><td>SSH keys</td><td>User SSH keys</td><td>Users re-register keys against the GitLab account on first login.</td></tr>
+<tr><td>LFS storage</td><td>GitLab LFS</td><td>Migrated with the repo. Confirm object counts match post-migration.</td></tr>
+<tr><td><code>_w</code> / <code>_r</code> LDAP groups</td><td>Shared groups at project level (Approach 1) → group-level SailPoint groups (Approach 2)</td><td>See the reference design. This is where the access-model evolution path applies.</td></tr>
+</tbody>
+</table>
+
+<div class="callout-warn">
+<strong>Common trap:</strong> Teams often assume pull-request history migrates automatically. The built-in GitLab importer for Bitbucket covers code, branches, and tags, plus a best-effort import of PRs as MRs — but comments, approvals, and the reviewer graph are not always preserved. Plan for a read-only Bitbucket archive if PR discussions are a compliance artifact.
+</div>
+
+<hr>
+
+<h2>4. Migration Phases (High-Level Plan)</h2>
+
+<p>The migration runs in four phases. Phases 0 and 1 are one-time platform work. Phases 2 and 3 repeat per wave.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 940 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Migration phases timeline">
+  <style>
+    .phase0 { fill: #deebff; stroke: #0052cc; stroke-width: 1.5; }
+    .phase1 { fill: #fff4e5; stroke: #ff991f; stroke-width: 1.5; }
+    .phase2 { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .phase3 { fill: #ffebe6; stroke: #de350b; stroke-width: 1.5; }
+    .hdr { font-family: -apple-system, Arial, sans-serif; font-size: 13px; font-weight: 600; fill: #000; text-anchor: middle; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 11.5px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #42526e; text-anchor: middle; }
+    .arrow { stroke: #6b778c; stroke-width: 2; fill: none; marker-end: url(#ph-arrow); }
+    .repeat { stroke: #de350b; stroke-width: 1.5; fill: none; stroke-dasharray: 5,3; marker-end: url(#r-arrow); }
+  </style>
+  <defs>
+    <marker id="ph-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <polygon points="0 0, 10 5, 0 10" fill="#6b778c"/>
+    </marker>
+    <marker id="r-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#de350b"/>
+    </marker>
+  </defs>
+
+  <!-- Phase 0 -->
+  <rect x="30" y="60" width="200" height="160" rx="8" class="phase0"/>
+  <text x="130" y="50" class="hdr">Phase 0 — Foundation</text>
+  <text x="130" y="85" class="lbl">Platform ready</text>
+  <text x="130" y="110" class="lbl-small">• Top-level group created</text>
+  <text x="130" y="128" class="lbl-small">• Deployment-zone subgroups</text>
+  <text x="130" y="146" class="lbl-small">• LDAP Group Sync wired</text>
+  <text x="130" y="164" class="lbl-small">• Runner fleet provisioned</text>
+  <text x="130" y="182" class="lbl-small">• Custom roles created</text>
+  <text x="130" y="200" class="lbl-small">• Policies + templates ready</text>
+  <text x="130" y="235" class="lbl-small" style="font-style:italic">once</text>
+
+  <path d="M 230 140 L 265 140" class="arrow"/>
+
+  <!-- Phase 1 -->
+  <rect x="265" y="60" width="200" height="160" rx="8" class="phase1"/>
+  <text x="365" y="50" class="hdr">Phase 1 — Pilot</text>
+  <text x="365" y="85" class="lbl">Prove the model</text>
+  <text x="365" y="110" class="lbl-small">• 2–3 low-risk apps</text>
+  <text x="365" y="128" class="lbl-small">• End-to-end dry run</text>
+  <text x="365" y="146" class="lbl-small">• CI rewrite patterns</text>
+  <text x="365" y="164" class="lbl-small">• Runbook hardening</text>
+  <text x="365" y="182" class="lbl-small">• Team training</text>
+  <text x="365" y="200" class="lbl-small">• Freeze window tuning</text>
+  <text x="365" y="235" class="lbl-small" style="font-style:italic">2–4 weeks</text>
+
+  <path d="M 465 140 L 500 140" class="arrow"/>
+
+  <!-- Phase 2 -->
+  <rect x="500" y="60" width="200" height="160" rx="8" class="phase2"/>
+  <text x="600" y="50" class="hdr">Phase 2 — Waves</text>
+  <text x="600" y="85" class="lbl">Bulk migration</text>
+  <text x="600" y="110" class="lbl-small">• Waves of ~20 apps</text>
+  <text x="600" y="128" class="lbl-small">• Approach 1 onboarding</text>
+  <text x="600" y="146" class="lbl-small">• Per-app cutover</text>
+  <text x="600" y="164" class="lbl-small">• Dual-running CI</text>
+  <text x="600" y="182" class="lbl-small">• Bitbucket → read-only</text>
+  <text x="600" y="200" class="lbl-small">• Soak monitoring</text>
+  <text x="600" y="235" class="lbl-small" style="font-style:italic">repeating</text>
+
+  <path d="M 700 140 L 735 140" class="arrow"/>
+
+  <!-- Phase 3 -->
+  <rect x="735" y="60" width="180" height="160" rx="8" class="phase3"/>
+  <text x="825" y="50" class="hdr">Phase 3 — Converge</text>
+  <text x="825" y="85" class="lbl">Approach 2</text>
+  <text x="825" y="110" class="lbl-small">• Domain grouping</text>
+  <text x="825" y="128" class="lbl-small">• SailPoint-only IAM</text>
+  <text x="825" y="146" class="lbl-small">• Retire _w / _r groups</text>
+  <text x="825" y="164" class="lbl-small">• Bitbucket decom</text>
+  <text x="825" y="182" class="lbl-small">• Audit + archive</text>
+  <text x="825" y="235" class="lbl-small" style="font-style:italic">per domain</text>
+
+  <!-- Loop back -->
+  <path d="M 600 222 L 600 270 L 365 270 L 365 222" class="repeat"/>
+  <text x="483" y="287" class="lbl-small" style="fill:#de350b">(learnings from each wave feed the next)</text>
+</svg>
+<div class="caption">Figure 2 — The four migration phases. Phase 0 and Phase 1 are one-time. Phase 2 repeats per wave. Phase 3 begins per domain once Phase 2 is stable for that domain.</div>
+</div>
+
+<h3>4.1 Phase definitions</h3>
+
+<table>
+<thead><tr><th>Phase</th><th>Entry criteria</th><th>Exit criteria</th></tr></thead>
+<tbody>
+<tr><td><strong>Phase 0 — Foundation</strong></td><td>GitLab instance provisioned; identity provider integrated; access-model design approved.</td><td>Top-level group, deployment-zone subgroups, LDAP Group Sync, runner fleet, custom roles, pipeline templates, and runbooks all in place and tested with a sandbox app.</td></tr>
+<tr><td><strong>Phase 1 — Pilot</strong></td><td>Phase 0 complete; 2–3 volunteer applications identified (low criticality, representative tech stacks).</td><td>Pilot apps fully operational on GitLab for the agreed soak period; runbooks updated from findings; pipeline-conversion patterns catalogued.</td></tr>
+<tr><td><strong>Phase 2 — Waves</strong></td><td>Pilot exit criteria met; wave schedule agreed with application owners.</td><td>All Bitbucket repositories in the wave migrated, running on GitLab under Approach 1, and Bitbucket read-only for those repos.</td></tr>
+<tr><td><strong>Phase 3 — Converge</strong></td><td>A domain's apps have soaked on Approach 1; ownership and grouping criteria are agreed for that domain.</td><td>Domain operating on Approach 2; project-level <code>_w</code> / <code>_r</code> groups decommissioned; access governance run entirely through SailPoint.</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2>5. Workstream A — Repository &amp; History Migration</h2>
+
+<p>Two viable paths. Pick per repo based on how much metadata must be preserved.</p>
+
+<h3>5.1 Path A1 — GitLab's built-in Bitbucket importer</h3>
+
+<p>Uses OAuth from GitLab to Bitbucket Cloud / Server. Imports code, branches, tags, LFS, and a best-effort version of pull requests. Recommended when:</p>
+<ul>
+  <li>Repos are not large (&lt; 2–3 GB).</li>
+  <li>Some loss in PR metadata fidelity is acceptable (comments may be preserved as MR notes, but reviewer graph and approvals are not fully reproduced).</li>
+  <li>The source is reachable from the GitLab instance.</li>
+</ul>
+
+<h3>5.2 Path A2 — Mirror via bare clone</h3>
+
+<p>The controlled path. Clone with <code>--mirror</code>, push to an empty GitLab project. Gives exact history fidelity but does not carry PRs at all. Use when:</p>
+
+<ul>
+  <li>Repos are large or contain LFS that must be verified.</li>
+  <li>PR history is being archived in a read-only Bitbucket snapshot (acceptable for compliance in most cases, since the Bitbucket system-of-record remains queryable).</li>
+  <li>Automation over 100s of repos is required.</li>
+</ul>
+
+<pre><code># Per-repo migration script (sketch)
+git clone --mirror https://bitbucket.example.com/scm/PAY/payments-api.git
+cd payments-api.git
+git remote set-url --push origin https://gitlab.example.com/acme/live-production/payments/api.git
+git push --mirror
+# Then verify: branch + tag counts, LFS object counts, sample-clone checks
+</code></pre>
+
+<h3>5.3 Pull request preservation</h3>
+
+<p>Three options, choose one per application and document it:</p>
+
+<ol>
+  <li><strong>Best-effort import</strong> — use the built-in importer and accept the fidelity loss.</li>
+  <li><strong>Read-only Bitbucket archive</strong> — keep the old Bitbucket project in read-only mode for N months. Link from the GitLab project's README.</li>
+  <li><strong>Cold archive</strong> — export PR data as JSON via the Bitbucket API and store it in an object store. Useful when Bitbucket is fully decommissioned.</li>
+</ol>
+
+<div class="callout-info">
+<strong>Recommended default:</strong> Path A2 + Option 2. Use the mirror-clone for deterministic code migration and keep Bitbucket read-only for the duration of the wave's soak period. This separates "code is on GitLab" from "historical PR search still works".
+</div>
+
+<hr>
+
+<h2>6. Workstream B — Access &amp; LDAP Migration</h2>
+
+<p>This workstream follows the reference design directly. The analysis below adds the <em>sequencing</em>.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 920 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Access migration flow">
+  <style>
+    .state { fill: #fff; stroke: #0052cc; stroke-width: 1.5; }
+    .state-mid { fill: #fffae6; stroke: #ff991f; stroke-width: 1.5; }
+    .state-end { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .hdr { font-family: -apple-system, Arial, sans-serif; font-size: 12px; font-weight: 600; fill: #000; text-anchor: middle; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #42526e; text-anchor: middle; }
+    .arrow { stroke: #6b778c; stroke-width: 1.5; fill: none; marker-end: url(#acc-arrow); }
+  </style>
+  <defs>
+    <marker id="acc-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 8 4, 0 8" fill="#6b778c"/>
+    </marker>
+  </defs>
+
+  <!-- Step 1 -->
+  <rect x="30" y="60" width="200" height="240" rx="6" class="state"/>
+  <text x="130" y="50" class="hdr">Step 1 — Bitbucket (today)</text>
+  <text x="130" y="90" class="lbl">payments-api repo</text>
+  <text x="130" y="120" class="lbl-small">Access via LDAP groups:</text>
+  <text x="130" y="140" class="lbl-small">payments-api_w (write)</text>
+  <text x="130" y="158" class="lbl-small">payments-api_r (read)</text>
+  <text x="130" y="190" class="lbl-small">Managed in SSCAM</text>
+  <text x="130" y="210" class="lbl-small">(per-repo groups)</text>
+  <text x="130" y="250" class="lbl-small">Inner sourcing: manual,</text>
+  <text x="130" y="268" class="lbl-small">fork-based if at all</text>
+
+  <path d="M 230 180 L 265 180" class="arrow"/>
+
+  <!-- Step 2 — Approach 1 -->
+  <rect x="265" y="60" width="220" height="280" rx="6" class="state-mid"/>
+  <text x="375" y="50" class="hdr">Step 2 — Approach 1 in GitLab</text>
+  <text x="375" y="90" class="lbl">payments/api project</text>
+  <text x="375" y="120" class="lbl-small">SAME LDAP groups shared:</text>
+  <text x="375" y="140" class="lbl-small">payments-api_w → Developer</text>
+  <text x="375" y="158" class="lbl-small">payments-api_r → Reporter</text>
+  <text x="375" y="190" class="lbl-small">(shared at project level)</text>
+  <text x="375" y="215" class="lbl-small">Optional: gl-payments-dev</text>
+  <text x="375" y="233" class="lbl-small">shared at domain for early</text>
+  <text x="375" y="251" class="lbl-small">group-level use cases</text>
+  <text x="375" y="285" class="lbl-small">Inner sourcing: enabled</text>
+  <text x="375" y="303" class="lbl-small">(project Internal by default)</text>
+  <text x="375" y="323" class="lbl-small" style="font-weight:600">→ Zero access change for users</text>
+
+  <path d="M 485 180 L 520 180" class="arrow"/>
+
+  <!-- Step 3 — Parallel -->
+  <rect x="520" y="60" width="220" height="280" rx="6" class="state-mid"/>
+  <text x="630" y="50" class="hdr">Step 3 — Dual running</text>
+  <text x="630" y="90" class="lbl">payments/api project</text>
+  <text x="630" y="120" class="lbl-small">Old (retained):</text>
+  <text x="630" y="140" class="lbl-small">payments-api_w → Dev</text>
+  <text x="630" y="158" class="lbl-small">payments-api_r → Rep</text>
+  <text x="630" y="190" class="lbl-small">New (added at domain):</text>
+  <text x="630" y="210" class="lbl-small">gl-payments-dev → Dev</text>
+  <text x="630" y="228" class="lbl-small">gl-payments-read → Rep</text>
+  <text x="630" y="260" class="lbl-small">Users have access via</text>
+  <text x="630" y="278" class="lbl-small">BOTH paths — no gaps</text>
+  <text x="630" y="308" class="lbl-small">Move owners to new groups,</text>
+  <text x="630" y="326" class="lbl-small">watch attestation reports</text>
+
+  <path d="M 740 180 L 775 180" class="arrow"/>
+
+  <!-- Step 4 — Approach 2 -->
+  <rect x="775" y="60" width="130" height="280" rx="6" class="state-end"/>
+  <text x="840" y="50" class="hdr">Step 4 — Approach 2</text>
+  <text x="840" y="95" class="lbl-small">payments/api</text>
+  <text x="840" y="125" class="lbl-small">Project-level</text>
+  <text x="840" y="143" class="lbl-small">members: NONE</text>
+  <text x="840" y="173" class="lbl-small">Inherited from</text>
+  <text x="840" y="191" class="lbl-small">domain:</text>
+  <text x="840" y="211" class="lbl-small">gl-payments-dev</text>
+  <text x="840" y="229" class="lbl-small">gl-payments-read</text>
+  <text x="840" y="265" class="lbl-small">_w / _r removed</text>
+  <text x="840" y="295" class="lbl-small" style="font-weight:600">Done</text>
+</svg>
+<div class="caption">Figure 3 — Access migration sequencing per application. Steps 2 and 3 keep the Bitbucket-era groups working so users see zero access disruption. Step 4 is only entered once the new groups are proven, at which point the legacy <code>_w</code> / <code>_r</code> groups are decommissioned.</div>
+</div>
+
+<h3>6.1 LDAP Group Sync configuration</h3>
+
+<p>GitLab binds LDAP groups to GitLab groups through Group Sync. The bindings are configured per GitLab group; the LDAP side is managed by the existing SSCAM / SailPoint systems.</p>
+
+<ul>
+  <li>For <strong>Approach 1</strong> onboarding, bind the existing <code>&lt;app&gt;_w</code> / <code>&lt;app&gt;_r</code> LDAP groups to the target GitLab <em>project</em> at Developer and Reporter respectively.</li>
+  <li>For <strong>Approach 2</strong> convergence, bind <code>P2P_GS_DevOps_&lt;group&gt;_Developer</code> / <code>_Reporter</code> / <code>_Maintainer</code> / <code>_Owner</code> LDAP groups to the target GitLab <em>group</em> (domain level) at the corresponding role.</li>
+  <li>Custom roles (Promoter, Operator, Security Manager) bind <code>P2P_GS_DevOps_&lt;group&gt;_Promoter</code> / <code>_Operator</code> / <code>_SecurityManager</code> at group scope.</li>
+  <li><strong>Audit:</strong> export the membership of each newly-bound group before cutover; verify post-cutover that the set of resolved GitLab memberships matches.</li>
+</ul>
+
+<div class="callout-warn">
+<strong>Watch sync latency.</strong> LDAP Group Sync runs on an interval (typically hourly). Do not start write-freeze cutover until a full sync cycle has completed and memberships have been verified.
+</div>
+
+<hr>
+
+<h2>7. Workstream C — CI/CD Pipeline Migration</h2>
+
+<p>This workstream concentrates the most effort. Bitbucket Pipelines and Jenkins configurations do not auto-convert to <code>.gitlab-ci.yml</code>. The migration is also the right moment to apply enterprise pipeline templates, eliminating drift accumulated over years.</p>
+
+<h3>7.1 Conversion strategy</h3>
+
+<table>
+<thead><tr><th>Source</th><th>Target</th><th>Approach</th></tr></thead>
+<tbody>
+<tr><td>Bitbucket Pipelines (<code>bitbucket-pipelines.yml</code>)</td><td><code>.gitlab-ci.yml</code> using enterprise templates via <code>include:</code></td><td>Manual rewrite per repo, guided by a template catalogue. Parallelisable across teams.</td></tr>
+<tr><td>Jenkins multibranch pipelines (simple, "just build + test")</td><td>GitLab CI</td><td>Rewrite to <code>.gitlab-ci.yml</code>. Decommission Jenkins job.</td></tr>
+<tr><td>Jenkins jobs with heavy plugin dependencies (e.g. blue-green orchestration, custom slaves)</td><td>Keep Jenkins, trigger via GitLab CI webhook</td><td>Bridge solution. Add a Jenkins-trigger job to the pipeline until Jenkins work is rewritten natively.</td></tr>
+<tr><td>Shell scripts &amp; Makefiles used by CI</td><td>Unchanged — invoked from <code>.gitlab-ci.yml</code></td><td>No change; reuse as-is.</td></tr>
+<tr><td>Secrets in Bitbucket Pipelines repository variables</td><td>GitLab CI/CD variables, masked + protected, scoped to the group where possible</td><td>Rotate on the way across. Never transcribe — create fresh.</td></tr>
+<tr><td>Artifact publishing to Nexus / Artifactory</td><td>Same target, new credentials</td><td>Reissue publish credentials; verify upload from a GitLab runner before cutover.</td></tr>
+</tbody>
+</table>
+
+<h3>7.2 Runner topology</h3>
+
+<ul>
+  <li><strong>Shared runners</strong> — for general build/test of internal-only projects. Cheapest to operate.</li>
+  <li><strong>Group-scoped runners</strong> — for projects needing access to deployment-zone-specific networks (e.g. a runner in the cloud landing zone, with egress to the relevant VPC).</li>
+  <li><strong>Project-scoped runners</strong> — exceptional. Only for strict tenancy requirements.</li>
+  <li>Tag runners with capability labels (e.g. <code>zone:live-prod</code>, <code>os:rhel8</code>). Pipelines declare required tags.</li>
+</ul>
+
+<h3>7.3 Dual-running CI during cutover</h3>
+
+<p>For the window where both Bitbucket and GitLab are accepting code (wave cutover window), disable CI on the Bitbucket side once the GitLab pipeline is green on the last synced commit. Avoid running builds on both platforms simultaneously — deploys get confusing, and you burn minutes twice.</p>
+
+<hr>
+
+<h2>8. Workstream D — Integrations, Webhooks, and Tooling</h2>
+
+<p>Every external system that knows about the Bitbucket URL or API needs to know about GitLab instead. Cataloguing these early is the highest-leverage work of the foundation phase, because each one is a potential cutover blocker.</p>
+
+<table>
+<thead><tr><th>Integration</th><th>What changes</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Jira ↔ repo linking</td><td>Swap the Bitbucket integration for the GitLab integration. Smart commits keep working if the commit message format is unchanged.</td><td>Historical commits in Bitbucket remain linked via the old integration while it's still installed.</td></tr>
+<tr><td>SonarQube / Sonar Cloud</td><td>Re-bind each project to the GitLab repo. Decorates merge requests instead of pull requests.</td><td>Coverage/quality-gate thresholds unchanged.</td></tr>
+<tr><td>Snyk / Dependency-Track / other SCA</td><td>Re-add projects under the GitLab SCM connection.</td><td>Historical findings may or may not carry across depending on the product.</td></tr>
+<tr><td>Slack / Teams notifications</td><td>Replace Bitbucket webhooks with GitLab integrations.</td><td>Channel membership unchanged; message format differs slightly.</td></tr>
+<tr><td>Deployment orchestrators (Spinnaker, ArgoCD)</td><td>Point at GitLab repo URL; update deploy keys.</td><td>GitOps-style consumers need the new repo URL in their app-of-apps manifests.</td></tr>
+<tr><td>Backup and DR tooling</td><td>Extend existing repo-backup cron to include GitLab projects; keep Bitbucket backups until decommission.</td><td>Do not disable Bitbucket backups during soak period.</td></tr>
+<tr><td>Compliance / audit exports</td><td>Update data sources; ensure audit log feeds include GitLab.</td><td>Coordinate with SIEM / compliance team.</td></tr>
+<tr><td>Developer IDE checkouts</td><td>Developers re-clone from new URL; communicate early.</td><td>A simple <code>git remote set-url</code> works if developers keep their local clone.</td></tr>
+</tbody>
+</table>
+
+<div class="callout-danger">
+<strong>Don't forget shell scripts.</strong> Internal scripts, CI bootstrap code, and documentation often hard-code Bitbucket URLs. Grep the enterprise codebase for <code>bitbucket.example.com</code> before the cutover window. A broken bootstrap script discovered at 2am is the single most common migration incident.
+</div>
+
+<hr>
+
+<h2>9. Cutover &amp; Freeze Strategy per Application</h2>
+
+<p>Each application follows the same cutover template during Phase 2. The window is small (hours to a single day), executed by the platform team with the application owner present.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 940 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cutover timeline">
+  <style>
+    .bar-pre { fill: #deebff; stroke: #0052cc; stroke-width: 1.2; }
+    .bar-freeze { fill: #ffebe6; stroke: #de350b; stroke-width: 1.2; }
+    .bar-cut { fill: #fff4e5; stroke: #ff991f; stroke-width: 1.2; }
+    .bar-post { fill: #e3fcef; stroke: #00875a; stroke-width: 1.2; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #42526e; text-anchor: middle; }
+    .axis { stroke: #6b778c; stroke-width: 1; fill: none; }
+    .hdr { font-family: -apple-system, Arial, sans-serif; font-size: 11px; font-weight: 600; fill: #000; text-anchor: middle; }
+  </style>
+
+  <!-- timeline axis -->
+  <path d="M 30 180 L 910 180" class="axis"/>
+  <path d="M 30 175 L 30 185" class="axis"/>
+  <path d="M 910 175 L 910 185" class="axis"/>
+
+  <!-- Pre-cutover -->
+  <rect x="30" y="100" width="280" height="50" rx="4" class="bar-pre"/>
+  <text x="170" y="122" class="lbl">T-7d to T-1h — Preparation</text>
+  <text x="170" y="142" class="lbl-small">Mirror syncs running; dry-run CI on GitLab side</text>
+  <text x="170" y="195" class="hdr">Bitbucket: read-write</text>
+  <text x="170" y="210" class="hdr">GitLab: code mirroring, CI dry-run</text>
+
+  <!-- Freeze -->
+  <rect x="310" y="100" width="140" height="50" rx="4" class="bar-freeze"/>
+  <text x="380" y="122" class="lbl">T-1h to T0 — Freeze</text>
+  <text x="380" y="142" class="lbl-small">No merges, no tags</text>
+  <text x="380" y="195" class="hdr">Bitbucket: read-only</text>
+  <text x="380" y="210" class="hdr">Final mirror sync</text>
+
+  <!-- Cutover -->
+  <rect x="450" y="100" width="180" height="50" rx="4" class="bar-cut"/>
+  <text x="540" y="122" class="lbl">T0 to T+2h — Cutover</text>
+  <text x="540" y="142" class="lbl-small">Last sync, verify, switch pipelines</text>
+  <text x="540" y="195" class="hdr">Bitbucket: read-only</text>
+  <text x="540" y="210" class="hdr">GitLab: active</text>
+
+  <!-- Soak -->
+  <rect x="630" y="100" width="280" height="50" rx="4" class="bar-post"/>
+  <text x="770" y="122" class="lbl">T+2h to T+14d — Soak</text>
+  <text x="770" y="142" class="lbl-small">App team works on GitLab; Bitbucket still readable</text>
+  <text x="770" y="195" class="hdr">Bitbucket: read-only (reference)</text>
+  <text x="770" y="210" class="hdr">GitLab: authoritative</text>
+
+  <!-- time markers -->
+  <text x="30" y="250" class="lbl-small">T-7d</text>
+  <text x="310" y="250" class="lbl-small">T-1h</text>
+  <text x="450" y="250" class="lbl-small">T0 (cutover)</text>
+  <text x="630" y="250" class="lbl-small">T+2h</text>
+  <text x="910" y="250" class="lbl-small">T+14d</text>
+
+  <text x="470" y="60" class="hdr" style="font-size:14px">Per-application cutover timeline</text>
+</svg>
+<div class="caption">Figure 4 — Cutover timeline per application. The write-freeze is bounded (typically 1 hour) and the soak period keeps Bitbucket readable so the team has a rollback anchor.</div>
+</div>
+
+<h3>9.1 Cutover checklist (per app)</h3>
+
+<ol>
+  <li>T-7d: create the GitLab project under the correct deployment zone / domain; configure Approach 1 access; mirror the repo; configure the runner tags; translate CI to <code>.gitlab-ci.yml</code>.</li>
+  <li>T-3d: run the GitLab CI against the latest Bitbucket <code>main</code>; verify artefacts match; register webhooks.</li>
+  <li>T-1d: announce freeze window; stop scheduled pipelines on Bitbucket.</li>
+  <li>T-1h: enter write-freeze on Bitbucket (permissions → read-only for all, or a branch-level block on <code>main</code> and tag pushes).</li>
+  <li>T0: final mirror sync (<code>git push --mirror</code>); verify last-commit SHA matches on both sides.</li>
+  <li>T0+30m: switch external webhooks (Jira, Sonar, Slack) from Bitbucket to GitLab.</li>
+  <li>T0+1h: enable GitLab CI; trigger a canary build.</li>
+  <li>T0+2h: hand the app back to the team; Bitbucket remains read-only.</li>
+  <li>T0+14d (soak end): confirm no fallback needed; decommission the old Bitbucket repo (archive flag, not deletion).</li>
+</ol>
+
+<hr>
+
+<h2>10. Rollback Strategy</h2>
+
+<p>A rollback is the act of reverting an application's system-of-record from GitLab back to Bitbucket. It should be a rare event, but must remain possible during the soak period.</p>
+
+<table>
+<thead><tr><th>Situation</th><th>Action</th></tr></thead>
+<tbody>
+<tr><td>Cutover sync failed mid-way (T0 window)</td><td>Stay on Bitbucket. Lift the freeze. Re-run the migration after root-cause analysis.</td></tr>
+<tr><td>Critical CI/CD issue surfaces within 24h</td><td>Keep code on GitLab. Fall back to Jenkins/Bitbucket Pipelines as a stopgap via a webhook from GitLab. Fix GitLab CI and retire the stopgap within the soak window.</td></tr>
+<tr><td>Unrecoverable operational issue within soak period (rare)</td><td>Re-open Bitbucket for writes for that project, re-mirror any commits made on GitLab back to Bitbucket (<code>git push bitbucket +refs/heads/*:refs/heads/*</code> from a clone of GitLab), freeze GitLab, fix, re-cutover.</td></tr>
+<tr><td>Issue discovered after soak end</td><td>No rollback path. Treat as a forward-fix problem on GitLab. The Bitbucket archive remains read-only as a reference.</td></tr>
+</tbody>
+</table>
+
+<div class="callout-success">
+<strong>The escape valve:</strong> the only rollback window that matters is the soak period. Communicate it explicitly to application owners: "For 14 days after cutover you can be reverted to Bitbucket if something is fundamentally broken. After that, we forward-fix on GitLab."
+</div>
+
+<hr>
+
+<h2>11. Risks and Mitigations</h2>
+
+<table>
+<thead><tr><th>Risk</th><th>Impact</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>LDAP sync latency causes access gap at cutover</td><td>Team loses access immediately after cutover</td><td>Verify a full sync cycle completes before lifting freeze. Keep legacy <code>_w</code>/<code>_r</code> groups bound alongside new groups during Approach 1.</td></tr>
+<tr><td>CI rewrite produces subtly different artefacts (e.g. build flags)</td><td>Production binaries diverge silently</td><td>Dry-run the new pipeline against the last Bitbucket <code>main</code> commit; binary-diff artefacts (hash or size) before cutover.</td></tr>
+<tr><td>Hard-coded Bitbucket URLs in scripts / docs</td><td>Tooling breaks at cutover</td><td>Grep audit during Phase 0. Provide a <code>git remote set-url</code> checklist to developers.</td></tr>
+<tr><td>PR history loss perceived as compliance breach</td><td>Audit fails</td><td>Keep Bitbucket read-only for the defined retention period; document the linkage in each project's README.</td></tr>
+<tr><td>Runner capacity saturates on wave day</td><td>Pipelines queue, cutover slips</td><td>Provision 2× expected peak during Phase 2; monitor queue depth; stagger wave cutovers by hours.</td></tr>
+<tr><td>Approach-2 ownership not agreed for a domain</td><td>Phase 3 blocks indefinitely</td><td>Keep the domain on Approach 1; it is a valid long-term state. Do not force convergence without clear ownership.</td></tr>
+<tr><td>Secret rotation missed</td><td>Credentials leak between two platforms simultaneously</td><td>Rotate every pipeline secret on migration; never copy values. Audit with the security team before lifting freeze.</td></tr>
+<tr><td>Developers continue pushing to Bitbucket post-cutover</td><td>Work lost</td><td>Bitbucket must be <em>read-only</em>, not just "please don't push". Enforce at the platform level.</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2>12. Success Criteria</h2>
+
+<p>Migration of an application is considered successful when all of the following hold at the end of its soak period:</p>
+
+<ul>
+  <li>Default branch tip on GitLab matches the Bitbucket tip at the final sync (commit SHA).</li>
+  <li>All branches and all tags are present on GitLab with matching SHAs.</li>
+  <li>LFS object count on GitLab matches Bitbucket.</li>
+  <li>The production build can be reproduced from the GitLab repo using the new pipeline, and the artefact matches the last Bitbucket-produced artefact by digest (or by documented equivalent if the build is non-deterministic).</li>
+  <li>All authorised users have access to the GitLab project via either the legacy <code>_w</code>/<code>_r</code> binding or the new group-level binding — no-one is locked out.</li>
+  <li>External integrations (Jira, Sonar, Slack, deploy) are operating against GitLab URLs.</li>
+  <li>Bitbucket repo is read-only and still readable for history queries.</li>
+  <li>No outstanding P1 defects against the migration for 14 consecutive days.</li>
+</ul>
+
+<p>Migration of the <strong>platform</strong> is successful when:</p>
+
+<ul>
+  <li>All applications in scope have cleared their per-app soak.</li>
+  <li>Each domain has either converged to Approach 2 or made an explicit, documented decision to remain on Approach 1.</li>
+  <li>Bitbucket is decommissioned (or placed into cold archive per the retention policy).</li>
+  <li>An access review cycle has run end-to-end through GitLab + SailPoint.</li>
+</ul>
+
+<hr>
+
+<h2>13. Recommended Wave Sequencing</h2>
+
+<p>Wave composition matters as much as wave size. A wave made entirely of one domain's apps lets you converge to Approach 2 for that domain at the end of the wave. A wave of unrelated apps spreads risk but leaves each domain half-migrated.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 920 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Wave sequencing">
+  <style>
+    .wave { fill: #fff; stroke: #42526e; stroke-width: 1.5; }
+    .w1 { fill: #deebff; stroke: #0052cc; stroke-width: 1.5; }
+    .w2 { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .w3 { fill: #fff4e5; stroke: #ff991f; stroke-width: 1.5; }
+    .w4 { fill: #ffebe6; stroke: #de350b; stroke-width: 1.5; }
+    .hdr { font-family: -apple-system, Arial, sans-serif; font-size: 12px; font-weight: 600; fill: #000; text-anchor: middle; }
+    .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 11.5px; fill: #000; text-anchor: middle; }
+    .lbl-small { font-family: -apple-system, Arial, sans-serif; font-size: 10px; fill: #42526e; text-anchor: middle; }
+  </style>
+
+  <!-- Pilot -->
+  <rect x="30" y="50" width="160" height="170" rx="6" class="w1"/>
+  <text x="110" y="40" class="hdr">Pilot</text>
+  <text x="110" y="80" class="lbl">2–3 apps</text>
+  <text x="110" y="110" class="lbl-small">Low-risk non-live apps</text>
+  <text x="110" y="128" class="lbl-small">Representative stacks:</text>
+  <text x="110" y="146" class="lbl-small">• one Java app</text>
+  <text x="110" y="164" class="lbl-small">• one Python app</text>
+  <text x="110" y="182" class="lbl-small">• one infra-as-code</text>
+  <text x="110" y="210" class="lbl-small" style="font-style:italic">weeks 1–4</text>
+
+  <!-- Wave 1 -->
+  <rect x="210" y="50" width="160" height="170" rx="6" class="w2"/>
+  <text x="290" y="40" class="hdr">Wave 1</text>
+  <text x="290" y="80" class="lbl">~20 apps</text>
+  <text x="290" y="110" class="lbl-small">One non-live zone</text>
+  <text x="290" y="128" class="lbl-small">Single domain where</text>
+  <text x="290" y="146" class="lbl-small">possible → converge to</text>
+  <text x="290" y="164" class="lbl-small">Approach 2 at end</text>
+  <text x="290" y="210" class="lbl-small" style="font-style:italic">weeks 5–10</text>
+
+  <!-- Wave 2 -->
+  <rect x="390" y="50" width="160" height="170" rx="6" class="w3"/>
+  <text x="470" y="40" class="hdr">Wave 2</text>
+  <text x="470" y="80" class="lbl">~40 apps</text>
+  <text x="470" y="110" class="lbl-small">Live-enterprise zone</text>
+  <text x="470" y="128" class="lbl-small">Mix of domains</text>
+  <text x="470" y="146" class="lbl-small">Stay on Approach 1;</text>
+  <text x="470" y="164" class="lbl-small">converge later per domain</text>
+  <text x="470" y="210" class="lbl-small" style="font-style:italic">weeks 11–20</text>
+
+  <!-- Wave 3 -->
+  <rect x="570" y="50" width="160" height="170" rx="6" class="w4"/>
+  <text x="650" y="40" class="hdr">Wave 3</text>
+  <text x="650" y="80" class="lbl">~40 apps</text>
+  <text x="650" y="110" class="lbl-small">Live-production zone</text>
+  <text x="650" y="128" class="lbl-small">Highest-risk apps last</text>
+  <text x="650" y="146" class="lbl-small">Elevated scrutiny;</text>
+  <text x="650" y="164" class="lbl-small">change-freeze coordination</text>
+  <text x="650" y="210" class="lbl-small" style="font-style:italic">weeks 21–32</text>
+
+  <!-- Converge -->
+  <rect x="750" y="50" width="160" height="170" rx="6" class="wave"/>
+  <text x="830" y="40" class="hdr">Converge</text>
+  <text x="830" y="80" class="lbl">per domain</text>
+  <text x="830" y="110" class="lbl-small">Approach 1 → 2</text>
+  <text x="830" y="128" class="lbl-small">Remove _w / _r groups</text>
+  <text x="830" y="146" class="lbl-small">Decommission Bitbucket</text>
+  <text x="830" y="164" class="lbl-small">Compliance exports</text>
+  <text x="830" y="210" class="lbl-small" style="font-style:italic">ongoing</text>
+</svg>
+<div class="caption">Figure 5 — Suggested wave sequencing. Pilot and Wave 1 prove the model in low-risk territory. Waves 2 and 3 handle the bulk, sorted by deployment zone. Convergence to Approach 2 happens per domain on its own schedule, not on the migration's schedule.</div>
+</div>
+
+<div class="callout-info">
+<strong>Why zone-ordered, not team-ordered:</strong> the deployment-zone hierarchy is the design's primary axis. Migrating zone-by-zone means the policy templates and protected-environment rules for that zone can be refined and applied wholesale. It also means the highest-risk zone (live-production) goes last, with the most learning accumulated.
+</div>
+
+<hr>
+
+<h2>Appendix — Consistency with the Reference Design</h2>
+
+<p>This analysis is consistent with the reference access model in [analysis](analysis):</p>
+
+<ul>
+  <li><strong>Approach 1 (Hybrid Transition)</strong> is the onboarding model for every application during Phase 2.</li>
+  <li><strong>Approach 2 (Domain / Product-Line Group-Centric)</strong> is the target state and the entry criterion of Phase 3 per domain.</li>
+  <li><strong>Deployment-model grouping</strong> (live-production, live-cloud-landing-zone, etc.) drives wave sequencing and runner topology.</li>
+  <li><strong>Inner sourcing by default</strong> is enabled from the first cutover, via Internal visibility on non-restricted projects.</li>
+  <li><strong>Confidential projects</strong> are placed into <code>restricted/</code> subgroups before any push.</li>
+  <li>The <strong>custom roles</strong> (Promoter, Operator, Security Manager) are provisioned once in Phase 0 and bound per domain during Phase 3.</li>
+</ul>
+
+<p>If the reference design changes (role naming, grouping criterion, approach definitions), this analysis must be re-read for consistency and updated.</p>
+
+</body>
+</html>
