@@ -158,7 +158,7 @@ TEST_USER_DEFAULT_PASSWORD = os.environ.get(
     "POC_TEST_USER_PASSWORD", "PocTestP@ssw0rd!2026")
 
 # ---------------------------------------------------------------------------
-# Simulated IAM group structure (SSCAM / SailPoint / P2P)
+# Simulated IAM group structure (SSCAM / SailPoint / DevOps Tooling)
 # ---------------------------------------------------------------------------
 SSCAM_GROUPS = [
     "domain-a-proj-1_w",
@@ -179,7 +179,7 @@ SAILPOINT_GROUPS = [
     "gl-restricted-read",
 ]
 
-P2P_GROUPS = [
+DEVOPS_TOOLING_GROUPS = [
     "IAM_DevOps_domain-a_Promoter",
     "IAM_DevOps_domain-a_Operator",
     "IAM_DevOps_domain-a_SecurityManager",
@@ -206,13 +206,13 @@ IAM_MEMBERSHIPS = {
     "iam-sim/sailpoint/gl-domain-b-dev":    [_U["alice"]],
     "iam-sim/sailpoint/gl-restricted-read": [_U["con"]],
 
-    # P2P DevOps (renamed from P2P_GS_DevOps_* to IAM_DevOps_*)
-    "iam-sim/p2p/IAM_DevOps_domain-a_Promoter":        [_U["paul"]],
-    "iam-sim/p2p/IAM_DevOps_domain-a_Operator":        [_U["carol"]],
-    "iam-sim/p2p/IAM_DevOps_domain-a_SecurityManager": [_U["sam"]],
-    "iam-sim/p2p/IAM_DevOps_domain-a_Maintainer":      [_U["bob"]],
-    "iam-sim/p2p/IAM_DevOps_domain-a_Developer":       [_U["alice"]],
-    "iam-sim/p2p/IAM_DevOps_domain-a_Reporter":        [_U["rita"]],
+    # DevOps Tooling (renamed from P2P_GS_DevOps_* to IAM_DevOps_*)
+    "iam-sim/devops-tooling/IAM_DevOps_domain-a_Promoter":        [_U["paul"]],
+    "iam-sim/devops-tooling/IAM_DevOps_domain-a_Operator":        [_U["carol"]],
+    "iam-sim/devops-tooling/IAM_DevOps_domain-a_SecurityManager": [_U["sam"]],
+    "iam-sim/devops-tooling/IAM_DevOps_domain-a_Maintainer":      [_U["bob"]],
+    "iam-sim/devops-tooling/IAM_DevOps_domain-a_Developer":       [_U["alice"]],
+    "iam-sim/devops-tooling/IAM_DevOps_domain-a_Reporter":        [_U["rita"]],
 }
 
 # Users granted Minimal Access at the top-level group
@@ -313,7 +313,7 @@ APPROACH_1_SHARES = [
     # Maintainer group on domain-a domain
     {
         "target": "domain-a",
-        "shared_group": "iam-sim/p2p/IAM_DevOps_domain-a_Maintainer",
+        "shared_group": "iam-sim/devops-tooling/IAM_DevOps_domain-a_Maintainer",
         "role": "maintainer",
     },
 ]
@@ -427,9 +427,9 @@ adhoc_task:
 """
 
 SAMPLE_CODEOWNERS = f"""\
-*                @{TOP_GROUP}/iam-sim/p2p/IAM_DevOps_domain-a_Maintainer
-/infra/          @{TOP_GROUP}/iam-sim/p2p/IAM_DevOps_domain-a_SecurityManager
-/.gitlab-ci.yml  @{TOP_GROUP}/iam-sim/p2p/IAM_DevOps_domain-a_Maintainer
+*                @{TOP_GROUP}/iam-sim/devops-tooling/IAM_DevOps_domain-a_Maintainer
+/infra/          @{TOP_GROUP}/iam-sim/devops-tooling/IAM_DevOps_domain-a_SecurityManager
+/.gitlab-ci.yml  @{TOP_GROUP}/iam-sim/devops-tooling/IAM_DevOps_domain-a_Maintainer
 """
 
 # ---------------------------------------------------------------------------

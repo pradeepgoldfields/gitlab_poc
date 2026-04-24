@@ -34,7 +34,7 @@
 
 <p><strong>Purpose:</strong> This report documents the Proof of Concept executed to validate the enterprise GitLab access model as defined in the reference design. The PoC covers both authorization approaches (Approach 1 — hybrid transition, and Approach 2 — domain/product-line group-centric), the migration scenario between them, and the three custom roles introduced by the design (Promoter, Operator, Security Manager).</p>
 
-<p><strong>Audience:</strong> P2P platform engineering, DevOps leadership, security architects, IAM owners, and anyone reviewing the PoC results ahead of GitLab onboarding.</p>
+<p><strong>Audience:</strong> DevOps Tooling platform engineering, DevOps leadership, security architects, IAM owners, and anyone reviewing the PoC results ahead of GitLab onboarding.</p>
 
 <p><strong>Scope covered:</strong> Flat business-domain hierarchy (per the analysis design), role model including the three custom roles, Approach 1 (hybrid) authorization pattern, Approach 2 (target) authorization pattern, migration between approaches, inner sourcing via visibility inheritance, confidential project handling via <code>restricted/</code> subgroups, environment-scoped policy inheritance (CI variables + protected environments + group runners), and CI/CD access scenarios.</p>
 
@@ -79,7 +79,7 @@
 
 <h2>2. How LDAP Was Simulated</h2>
 
-<p>Live LDAP integration (SSCAM, SailPoint, and the P2P group management systems) was out of scope for this PoC. To validate the design's structural and authorization logic independently of the IAM system, LDAP groups were simulated as manually-created GitLab groups using the exact naming conventions from the reference design.</p>
+<p>Live LDAP integration (SSCAM, SailPoint, and the DevOps Tooling group management systems) was out of scope for this PoC. To validate the design's structural and authorization logic independently of the IAM system, LDAP groups were simulated as manually-created GitLab groups using the exact naming conventions from the reference design.</p>
 
 <p>In a production deployment these names would resolve to LDAP / SailPoint / SSCAM groups bound to GitLab via LDAP Group Sync. For the PoC, each "LDAP group" was represented as a GitLab subgroup whose members were manually managed. Role assignments were then configured by sharing these IAM-style groups with the target GitLab groups at the appropriate role — exactly the pattern that LDAP Group Sync would produce.</p>
 
@@ -89,7 +89,7 @@
 <tr><td>SSCAM project-level groups (e.g., <code>domain-a-proj-1_w</code>, <code>domain-a-proj-1_r</code>)</td><td>GitLab groups created under <code>acme/iam-sim/sscam/</code> with the same names; shared with target project at Developer/Reporter role</td></tr>
 <tr><td>SailPoint group-level groups (e.g., <code>gl-domain-a-dev</code>, <code>gl-domain-a-maint</code>)</td><td>GitLab groups created under <code>acme/iam-sim/sailpoint/</code>; shared with target GitLab group at the appropriate role</td></tr>
 <tr><td>Deployment-zone read groups (e.g., <code>gl-restricted-read</code>)</td><td>GitLab group <code>acme/iam-sim/sailpoint/gl-restricted-read</code>; shared with <code>restricted/</code> subgroups at Reporter role</td></tr>
-<tr><td>P2P DevOps role groups (e.g., <code>IAM_DevOps_<group>_Developer</code>)</td><td>GitLab groups created under <code>acme/iam-sim/p2p/</code> matching the design's ASIS and TOBE naming</td></tr>
+<tr><td>DevOps Tooling role groups (e.g., <code>IAM_DevOps_<group>_Developer</code>)</td><td>GitLab groups created under <code>acme/iam-sim/devops-tooling/</code> matching the design's ASIS and TOBE naming</td></tr>
 </tbody>
 </table>
 
@@ -215,7 +215,7 @@
   <text x="790" y="298" class="lbl-small">├── sailpoint/   (Approach 2)</text>
   <text x="790" y="314" class="lbl-small">│    ├── gl-domain-a-{dev,read,…}</text>
   <text x="790" y="330" class="lbl-small">│    └── gl-restricted-read</text>
-  <text x="790" y="352" class="lbl-small">└── p2p/   (custom roles)</text>
+  <text x="790" y="352" class="lbl-small">└── devops-tooling/   (custom roles)</text>
   <text x="790" y="368" class="lbl-small">     └── IAM_DevOps_domain-a_*</text>
 </svg>
 <div class="caption">Figure 1 — The flat business-domain hierarchy constructed for the PoC. Business domains, the IAM simulation container, and the platform group sit directly under <code>acme-poc</code>. Confidential projects live under each domain's Private <code>restricted/</code> subgroup.</div>

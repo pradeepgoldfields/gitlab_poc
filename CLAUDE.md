@@ -32,7 +32,7 @@ When editing, use these terms exactly — they map to the reference design:
 - **Inner sourcing by default** — authenticated users can read non-confidential code.
 - **Deployment-model grouping** — applications grouped by deployment zone (Live - Cloud Landing Zone, Live - Production, Non-live - Enterprise, etc.), not by org structure.
 
-LDAP / SSCAM / SailPoint integration is **simulated** in the PoC via manually-managed GitLab groups under `<top-level>/iam-sim/{sscam,sailpoint,p2p}/`. Real LDAP binding is out of scope.
+LDAP / SSCAM / SailPoint integration is **simulated** in the PoC via manually-managed GitLab groups under `<top-level>/iam-sim/{sscam,sailpoint,devops-tooling}/`. Real LDAP binding is out of scope.
 
 ## Agents available
 

@@ -19,7 +19,7 @@ def main():
     iam_base = f"{config.TOP_GROUP}/{config.IAM_SIM_GROUP}"
 
     # Three subfolders
-    for sub in ["sscam", "sailpoint", "p2p"]:
+    for sub in ["sscam", "sailpoint", "devops-tooling"]:
         step(f"Ensuring {iam_base}/{sub}")
         gl.ensure_group(f"{iam_base}/{sub}", visibility="private")
         done(f"{iam_base}/{sub}")
@@ -38,10 +38,10 @@ def main():
         gl.ensure_group(path, visibility="private")
         done(path)
 
-    # P2P DevOps groups
-    step("Creating P2P DevOps groups…")
-    for g in config.P2P_GROUPS:
-        path = f"{iam_base}/p2p/{g}"
+    # DevOps Tooling groups
+    step("Creating DevOps Tooling groups…")
+    for g in config.DEVOPS_TOOLING_GROUPS:
+        path = f"{iam_base}/devops-tooling/{g}"
         gl.ensure_group(path, visibility="private")
         done(path)
 

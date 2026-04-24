@@ -299,12 +299,12 @@ or set `GITLAB_VERIFY_SSL=0`.
 |---|---|---|:-:|
 | 1 | `phase_01_custom_roles.py` | Creates Promoter, Operator, Security Manager custom roles (instance-level). Uses 18.x ability names. | yes |
 | 2 | `phase_02_hierarchy.py` | Top-level `acme-poc` group, 5 zone subgroups, 4 domains, 2 `restricted/` subgroups, 8 projects. | yes |
-| 3 | `phase_03_iam_groups.py` | 20 IAM-sim groups under `iam-sim/{sscam,sailpoint,p2p}`. | yes |
+| 3 | `phase_03_iam_groups.py` | 20 IAM-sim groups under `iam-sim/{sscam,sailpoint,devops-tooling}`. | yes |
 | 4 | `phase_04_users.py` | 8 test users; assigns each to the right IAM-sim groups. Default password `PocTestP@ssw0rd!2026`. | yes |
 | 5 | `phase_05_approach_1.py` | Hybrid sharing: project-level SSCAM + optional domain SailPoint. | yes |
 | 6 | `phase_06_approach_2.py` | Target sharing: pure SailPoint group-level on `trade` domain. | yes |
 | 7 | `phase_07_protection.py` | Protect `main` (Maintainer-merge, no push, code-owner approval), `v*` tags, `staging`/`prod` environments. Commits sample `.gitlab-ci.yml` + CODEOWNERS. | yes |
-| 9 | `phase_09_custom_role_assignment.py` | Shares P2P groups with `payments/api` carrying `member_role_id` for the custom roles. | yes |
+| 9 | `phase_09_custom_role_assignment.py` | Shares DevOps Tooling groups with `payments/api` carrying `member_role_id` for the custom roles. | yes |
 | 10 | `phase_10_inner_source.py` | Verifies Internal visibility; Dan forks `payments/api`. | yes |
 | 11 | `phase_11_zone_policy.py` | Zone-level `PROD_DEPLOY_TOKEN` (env-scoped to prod, protected, masked). | yes |
 | 12 | `phase_12_cicd_tests.py` | Triggers test pipelines on feature branch & tags. | yes |

@@ -3,7 +3,7 @@
 Phase 9 — Custom Role Assignment
 
 Assigns the three custom roles (Promoter, Operator, Security Manager) to their
-P2P IAM groups on domain-a/proj-1, then shares those groups with the project
+DevOps Tooling IAM groups on domain-a/proj-1, then shares those groups with the project
 using the custom role IDs.
 
 Note: the Operator layered restriction requires protected environment/branch
@@ -17,22 +17,22 @@ from config import _suffix  # noqa: PLC2701  (test-suite-style internal util)
 from gitlab_client import GitLabClient, banner, step, done, warn, fail, require_admin_token
 
 
-# Mapping from Custom Role name -> P2P IAM group that should hold that role.
+# Mapping from Custom Role name -> DevOps Tooling IAM group that should hold that role.
 # Names flow through _suffix so they pick up POC_PREFIX (matching config.py).
 CUSTOM_ROLE_ASSIGNMENTS = [
     {
         "custom_role_name": _suffix("Promoter"),
-        "iam_group": "iam-sim/p2p/IAM_DevOps_domain-a_Promoter",
+        "iam_group": "iam-sim/devops-tooling/IAM_DevOps_domain-a_Promoter",
         "target_project": "domain-a/proj-1",
     },
     {
         "custom_role_name": _suffix("Operator"),
-        "iam_group": "iam-sim/p2p/IAM_DevOps_domain-a_Operator",
+        "iam_group": "iam-sim/devops-tooling/IAM_DevOps_domain-a_Operator",
         "target_project": "domain-a/proj-1",
     },
     {
         "custom_role_name": _suffix("Security Manager"),
-        "iam_group": "iam-sim/p2p/IAM_DevOps_domain-a_SecurityManager",
+        "iam_group": "iam-sim/devops-tooling/IAM_DevOps_domain-a_SecurityManager",
         "target_project": "domain-a/proj-1",
     },
 ]

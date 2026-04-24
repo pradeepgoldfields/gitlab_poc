@@ -139,7 +139,7 @@ A low‑risk onboarding model that preserves existing Bitbucket access groups wh
 This approach is explicitly temporary.
 
 Visual – How It Looks in GitLab
-Top-Level Group (Owner: P2P)
+Top-Level Group (Owner: DevOps Tooling)
 ├── business-unit-1/
 │   ├── domain-1/ (optional product group)
 │       ├── app-1
@@ -148,11 +148,11 @@ Top-Level Group (Owner: P2P)
 │   └── restricted/
 │       └── app-4
 ├── does/
-│   ├── dice/ (Maintainer: P2P)
+│   ├── dice/ (Maintainer: DevOps Tooling)
 │       ├── app-1-playbook (Developer: dev-app-1-playbook)
 │       ├── app-2-playbook
 │       └── app-3-playbook
-│   ├── oasis/ (Maintainer: P2P)
+│   ├── oasis/ (Maintainer: DevOps Tooling)
 │       └── app-4-playbook (Developer: dev-app-4-playbook)
 │   └── restricted/
 

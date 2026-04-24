@@ -314,7 +314,7 @@ Under <code>platform/</code>:
 
 <h2>4. Phase 3 — IAM Simulation Groups</h2>
 
-<p>Create the groups that simulate SSCAM, SailPoint, and P2P LDAP groups. These are just GitLab groups with specific naming — they have no special IAM properties in the PoC. They will be used as membership containers and shared with the real hierarchy at appropriate roles.</p>
+<p>Create the groups that simulate SSCAM, SailPoint, and DevOps Tooling LDAP groups. These are just GitLab groups with specific naming — they have no special IAM properties in the PoC. They will be used as membership containers and shared with the real hierarchy at appropriate roles.</p>
 
 <h3>Step 3.1 — Create IAM subfolders</h3>
 
@@ -323,7 +323,7 @@ Inside <code>acme-poc/iam-sim/</code>, create three subgroups (all Private):
 <ul>
   <li><code>sscam</code> — for Approach 1 project-level groups</li>
   <li><code>sailpoint</code> — for Approach 2 group-level groups</li>
-  <li><code>p2p</code> — for P2P DevOps role groups</li>
+  <li><code>devops-tooling</code> — for DevOps Tooling role groups</li>
 </ul>
 </div>
 
@@ -356,10 +356,10 @@ Under <code>iam-sim/sailpoint/</code>, create:
 </ul>
 </div>
 
-<h3>Step 3.4 — Create P2P DevOps groups</h3>
+<h3>Step 3.4 — Create DevOps Tooling groups</h3>
 
 <div class="step">
-Under <code>iam-sim/p2p/</code>, create:
+Under <code>iam-sim/devops-tooling/</code>, create:
 <ul>
   <li><code>IAM_DevOps_domain-a_Promoter</code></li>
   <li><code>IAM_DevOps_domain-a_Operator</code></li>
@@ -413,7 +413,7 @@ Invite members as follows:
 </ul>
 </div>
 
-<h3>Step 4.3 — Invite users into P2P groups</h3>
+<h3>Step 4.3 — Invite users into DevOps Tooling groups</h3>
 
 <div class="step">
 Invite members:
@@ -489,7 +489,7 @@ Navigate to <code>domain-a/restricted → Manage → Members → Invite a group<
 <div class="step">
 Navigate to <code>domain-a → Manage → Members → Invite a group</code>.
 <ul>
-  <li>Invite group: <code>acme-poc/iam-sim/p2p/IAM_DevOps_domain-a_Maintainer</code></li>
+  <li>Invite group: <code>acme-poc/iam-sim/devops-tooling/IAM_DevOps_domain-a_Maintainer</code></li>
   <li>Max role: <strong>Maintainer</strong></li>
 </ul>
 </div>
@@ -574,7 +574,7 @@ Add an approval rule:
 <ul>
   <li>Name: "Default"</li>
   <li>Required approvals: <strong>1</strong></li>
-  <li>Approvers: <code>acme-poc/iam-sim/p2p/IAM_DevOps_domain-a_Maintainer</code></li>
+  <li>Approvers: <code>acme-poc/iam-sim/devops-tooling/IAM_DevOps_domain-a_Maintainer</code></li>
 </ul>
 </div>
 
@@ -583,9 +583,9 @@ Add an approval rule:
 <div class="step">
 As <code>poc-bob</code> (Maintainer), add a <code>CODEOWNERS</code> file at the root of <code>domain-a/proj-1</code>:
 
-<pre><code>*                @acme-poc/iam-sim/p2p/IAM_DevOps_domain-a_Maintainer
-/infra/          @acme-poc/iam-sim/p2p/IAM_DevOps_domain-a_SecurityManager
-/.gitlab-ci.yml  @acme-poc/iam-sim/p2p/IAM_DevOps_domain-a_Maintainer
+<pre><code>*                @acme-poc/iam-sim/devops-tooling/IAM_DevOps_domain-a_Maintainer
+/infra/          @acme-poc/iam-sim/devops-tooling/IAM_DevOps_domain-a_SecurityManager
+/.gitlab-ci.yml  @acme-poc/iam-sim/devops-tooling/IAM_DevOps_domain-a_Maintainer
 </code></pre>
 Commit directly to main.
 </div>

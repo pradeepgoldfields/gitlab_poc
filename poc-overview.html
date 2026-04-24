@@ -272,7 +272,7 @@
   LDAP/SAML/SCIM, not from GitLab itself. GitLab's job is to enforce
   access; the lifecycle (joiner / mover / leaver) is owned externally.
   The real enterprise uses three external identity systems —
-  <strong>SSCAM</strong>, <strong>SailPoint</strong>, and <strong>P2P</strong>
+  <strong>SSCAM</strong>, <strong>SailPoint</strong>, and <strong>DevOps Tooling</strong>
   — each issuing LDAP groups under different naming conventions.
 </p>
 
@@ -308,7 +308,7 @@
     │   ├── gl-domain-a-{read,dev,maint,owner}
     │   ├── gl-domain-b-{read,dev,maint,owner}
     │   └── gl-restricted-read
-    └── p2p/                           ← simulates P2P DevOps roster
+    └── devops-tooling/                           ← simulates DevOps Tooling roster
         ├── IAM_DevOps_domain-a_Promoter
         ├── IAM_DevOps_domain-a_Operator
         ├── IAM_DevOps_domain-a_SecurityManager
@@ -319,7 +319,7 @@
 
 <p>
   The three sub-containers (<code>sscam</code>, <code>sailpoint</code>,
-  <code>p2p</code>) exist only to group the simulated LDAP groups the same
+  <code>devops-tooling</code>) exist only to group the simulated LDAP groups the same
   way the real systems do — they carry no access of their own. They are
   defined in <code>config.py</code> and created by
   <code>phase_03_iam_groups.py</code>. Naming mirrors the real LDAP groups
@@ -329,7 +329,7 @@
 <ul>
   <li><code>&lt;app&gt;_w</code> / <code>&lt;app&gt;_r</code> → SSCAM (Bitbucket-era, project-level — Approach 1)</li>
   <li><code>gl-&lt;domain&gt;-{read,dev,maint,owner}</code> → SailPoint (GitLab-native, group-level — Approach 2)</li>
-  <li><code>IAM_DevOps_&lt;group&gt;_&lt;Role&gt;</code> → P2P DevOps (custom roles — Promoter, Operator, Security Manager)</li>
+  <li><code>IAM_DevOps_&lt;group&gt;_&lt;Role&gt;</code> → DevOps Tooling (custom roles — Promoter, Operator, Security Manager)</li>
 </ul>
 
 <h4>The two-hop assignment model</h4>
@@ -350,7 +350,7 @@
 <pre><code>IAM_MEMBERSHIPS = {
     "iam-sim/sscam/domain-a-proj-1_w":            [alice],   # Approach 1
     "iam-sim/sailpoint/gl-domain-a-dev":          [alice],   # Approach 2
-    "iam-sim/p2p/IAM_DevOps_domain-a_Maintainer": [bob],     # Custom-role roster
+    "iam-sim/devops-tooling/IAM_DevOps_domain-a_Maintainer": [bob],     # Custom-role roster
     ...
 }</code></pre>
 
@@ -397,7 +397,7 @@ gl-domain-b-owner   --share as Owner      --&gt;  domain-b</code></pre>
 
 <p>
   Phase 1 creates the three custom roles at the instance level. Phase 9
-  then shares the <code>iam-sim/p2p/IAM_DevOps_domain-a_&lt;Role&gt;</code>
+  then shares the <code>iam-sim/devops-tooling/IAM_DevOps_domain-a_&lt;Role&gt;</code>
   subgroups with <code>domain-a/proj-1</code>, passing the
   <code>member_role_id</code> parameter on the share call. That single
   call binds the IAM-sim roster to a project and stamps everyone in it
@@ -799,7 +799,7 @@ gl-domain-b-owner   --share as Owner      --&gt;  domain-b</code></pre>
 
   <line x1="970" y1="135" x2="970" y2="148" class="line"/>
   <rect x="980" y="148" width="80" height="28" rx="4" class="iam"/>
-  <text x="1020" y="166" class="lbl">p2p</text>
+  <text x="1020" y="166" class="lbl">devops-tooling</text>
   <text x="1020" y="195" class="small">IAM_DevOps_*</text>
 
   <!-- Legend -->
@@ -816,7 +816,7 @@ gl-domain-b-owner   --share as Owner      --&gt;  domain-b</code></pre>
 </svg>
 <div class="caption">Figure 2 — The PoC group hierarchy. Each business
   domain sits directly under the top group. The <code>iam-sim/</code> subtree
-  simulates the SSCAM, SailPoint and P2P IAM systems that hold real LDAP
+  simulates the SSCAM, SailPoint and DevOps Tooling IAM systems that hold real LDAP
   groups in production. <code>platform/</code> hosts shared CI templates.</div>
 </div>
 
