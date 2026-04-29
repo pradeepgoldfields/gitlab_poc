@@ -42,12 +42,17 @@ api-calls.jsonl
 *.jsonl
 gitlab-poc-scripts/poc-final-report.html
 gitlab-poc-scripts/poc-final-report.txt
+gitlab-poc-scripts-v2/poc-final-report.html
+gitlab-poc-scripts-v2/poc-final-report.txt
 
 # UI evidence artifacts (the runner wipes the screenshots dir at the start of
 # every run; we never want them in git).
 gitlab-poc-scripts/ui_tests/screenshots/
 gitlab-poc-scripts/ui_tests/ui-test-report.html
 gitlab-poc-scripts/ui_tests/screenshots-*/
+gitlab-poc-scripts-v2/ui_tests/screenshots/
+gitlab-poc-scripts-v2/ui_tests/ui-test-report.html
+gitlab-poc-scripts-v2/ui_tests/screenshots-*/
 
 # Stray screenshots / images at any level (debug captures, ad-hoc shots
 # left by the Playwright runner). The three HTML PoC reports at the root

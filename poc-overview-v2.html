@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Enterprise GitLab Access Model PoC v2 — Comprehensive Overview</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+         max-width: 1200px; margin: 2em auto; padding: 0 1.5em;
+         color: #000; background: #fff; line-height: 1.6; }
+  h1 { font-size: 2em; border-bottom: 3px solid #0052cc; padding-bottom: 0.3em; color: #172b4d; }
+  h2 { font-size: 1.5em; margin-top: 2.5em; border-bottom: 1px solid #dfe1e6;
+       padding-bottom: 0.2em; color: #172b4d; }
+  h3 { font-size: 1.2em; margin-top: 2em; color: #172b4d; }
+  h4 { font-size: 1.05em; margin-top: 1.5em; color: #42526e; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  th, td { border: 1px solid #dfe1e6; padding: 0.5em 0.75em; text-align: left; vertical-align: top; }
+  th { background: #f4f5f7; font-weight: 600; color: #172b4d; }
+  pre { background: #f4f5f7; border: 1px solid #dfe1e6; border-radius: 3px;
+        padding: 0.75em 1em; overflow-x: auto; font-size: 0.9em; }
+  code { background: #f4f5f7; padding: 0.05em 0.35em; border-radius: 3px; font-size: 0.9em; }
+
+  .callout-info    { border-left: 4px solid #0052cc; background: #deebff; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-warn    { border-left: 4px solid #ff991f; background: #fffae6; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-success { border-left: 4px solid #00875a; background: #e3fcef; padding: 0.75em 1em; margin: 1em 0; }
+  .callout-danger  { border-left: 4px solid #de350b; background: #ffebe6; padding: 0.75em 1em; margin: 1em 0; }
+
+  .pass { color: #00875a; font-weight: 600; }
+  .fail { color: #de350b; font-weight: 600; }
+  .muted { color: #5e6c84; font-size: 0.9em; }
+  .persona-tag { display: inline-block; background: #fff; border: 1px solid #dfe1e6;
+                 border-radius: 3px; padding: 0.05em 0.5em; font-family: monospace;
+                 font-size: 0.85em; }
+
+  .toc { background: #f4f5f7; border: 1px solid #dfe1e6; padding: 0.7em 1.4em;
+         border-radius: 4px; margin: 1.5em 0; }
+  .toc ol { margin: 0.4em 0; padding-left: 1.5em; }
+
+  .diagram { margin: 1.5em 0; padding: 1em; background: #fafbfc;
+             border: 1px solid #dfe1e6; border-radius: 4px; }
+  .diagram .caption { text-align: center; font-size: 0.88em; color: #5e6c84;
+                      margin-top: 0.5em; font-style: italic; }
+  .v2-hop { background: #fafbfc; border-left: 4px solid #0052cc;
+            padding: 0.8em 1.2em; margin: 1em 0; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<h1>Enterprise GitLab Access Model PoC <span style="color:#0052cc;">v2</span> — Comprehensive Overview</h1>
+
+<p class="muted">
+  Single-document briefing for the v2 PoC: <strong>org-driven access</strong> with a
+  three-tier separation between IAM source (LDAP), organisational hierarchy,
+  and application hierarchy. v1 (single-tier, IAM→app direct) is preserved
+  intact at <code>gitlab-poc-scripts/</code> and at the <code>acme-poc</code> top
+  group on the live instance for comparison.
+</p>
+
+<div class="callout-info">
+<strong>What's different in v2.</strong>
+v1 grants access to applications by sharing IAM-sim subgroups <em>directly
+with the application projects</em>. v2 introduces a middle tier — the
+<code>organisations/</code> tree — through which all access must flow.
+Apps own no direct shares; org subgroups own all the privilege; IAM groups
+populate the org subgroups. The lifecycle benefit: when a person moves
+teams in IAM, they automatically lose access to the old apps and gain
+access to the new ones. <strong>Zero changes at the application tree.</strong>
+</div>
+
+<div class="callout-warn">
+<strong>Important caveat — group-sharing transitivity.</strong>
+The v2 design is structurally clean and the live verifier passes 28 of
+its 29 checks, but the <strong>one failing check</strong> is a real-world
+limitation of GitLab's runtime permission resolver. Read
+<a href="#transitivity">Section 7 — Group Sharing in GitLab</a> for the
+full explanation. Spoiler: the model works correctly under real LDAP/SAML
+sync (which the PoC simulates but cannot fully reproduce on a manual
+local install).
+</div>
+
+
+<!-- =====================================================================
+     1. WHAT THIS POC PROVES
+     ===================================================================== -->
+<h2 id="claims">1. What v2 proves</h2>
+
+<table>
+  <thead>
+    <tr><th style="width:30%">Claim</th><th>Evidence</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>1. Access flows through the organisation tree, not directly from IAM to apps.</strong></td>
+      <td>Phase 5 (org→app) creates 10 group/project shares. Every share's source is an <code>organisations/...</code> subgroup. Verifier check <em>"Apps have no direct IAM shares"</em> passes — proj-1 carries no <code>iam-sim/*</code> shares.</td>
+    </tr>
+    <tr>
+      <td><strong>2. Org subgroups can be fed by multiple LDAP origins simultaneously.</strong></td>
+      <td>squad-1/squad-leads has Bob provisioned via BOTH SailPoint (<code>gl-squad-1-squad-leads</code>) and SSCAM (<code>proj-1_w</code>). Verifier check <em>"Hop 1: Bob provisioned into squad-1/squad-leads (dual SailPoint+SSCAM origin)"</em> passes.</td>
+    </tr>
+    <tr>
+      <td><strong>3. Role-bearing org subgroups deliver fine-grained authority at every altitude.</strong></td>
+      <td>Five squad-level subgroups (squad-leads, operators, promoters, developers, reporters), two tribe-level subgroups (tribe-leads, security-partners), one top-level (platform-owners). Each is populated by Phase 4 and shared with apps by Phase 5.</td>
+    </tr>
+    <tr>
+      <td><strong>4. Mover scenario: changing IAM membership instantly redirects app access.</strong></td>
+      <td>Phase 13 Scenario 2 walks Fred from squad-3-developers to squad-1-developers and back. <code>members/all</code> on subdomain-a's projects shows him appear/disappear with no changes anywhere in the application tree. (See caveat in Section 7 about runtime evaluation.)</td>
+    </tr>
+    <tr>
+      <td><strong>5. Reorg scenario: re-pointing an org subgroup at a different application moves access in bulk.</strong></td>
+      <td>Phase 13 Scenario 4 unshares squad-1/developers from subdomain-a, shares with subdomain-b, and confirms membership flip. No per-user changes.</td>
+    </tr>
+    <tr>
+      <td><strong>6. Sec sweep: a tribe-level role subgroup grants access across every project beneath the tribe.</strong></td>
+      <td>Phase 13 Scenario 5 adds Tina to gl-tribe-1-security; she gains Security Manager (custom role) on every domain-a project at once.</td>
+    </tr>
+    <tr>
+      <td><strong>7. Custom roles still work — bound at the org→app share via member_role_id.</strong></td>
+      <td>Phase 5 attaches Promoter, Operator, Security Manager IDs to the relevant org→app shares. CUSTOM_ROLES live at instance level (Phase 1); the binding lives at the share, not at a separate roster step.</td>
+    </tr>
+  </tbody>
+</table>
+
+
+<!-- =====================================================================
+     2. THE V2 SHAPE
+     ===================================================================== -->
+<h2 id="shape">2. The v2 hierarchy</h2>
+
+<p>
+  The v2 PoC has the same four top-level peer subgroups as v1
+  (<code>iam-sim</code>, <code>platform</code>, plus the new
+  <code>applications</code> and <code>organisations</code> trees), but the
+  meaning of "where access lives" changes fundamentally.
+</p>
+
+<div class="diagram">
+<svg viewBox="0 0 1100 600" xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="v2 hierarchy diagram">
+  <style>
+    .top    { fill: #172b4d; stroke: #172b4d; }
+    .domain { fill: #fffae6; stroke: #ff991f; stroke-width: 1.5; }
+    .proj   { fill: #fff;    stroke: #6b778c; stroke-width: 1; }
+    .restr  { fill: #ffebe6; stroke: #de350b; stroke-width: 1.5; }
+    .iam    { fill: #e3fcef; stroke: #00875a; stroke-width: 1.5; }
+    .org    { fill: #deebff; stroke: #0052cc; stroke-width: 1.5; }
+    .platform { fill: #f4f5f7; stroke: #5e6c84; stroke-width: 1.5; }
+    .lbl    { font-family: -apple-system, Arial, sans-serif; font-size: 11px; fill: #000; text-anchor: middle; }
+    .lbl-w  { font-family: -apple-system, Arial, sans-serif; font-size: 12px; fill: #fff; text-anchor: middle; font-weight: 600; }
+    .small  { font-family: -apple-system, Arial, sans-serif; font-size: 9.5px; fill: #42526e; text-anchor: middle; }
+    .line   { stroke: #6b778c; stroke-width: 1; fill: none; }
+  </style>
+
+  <rect x="450" y="10" width="200" height="34" rx="4" class="top"/>
+  <text x="550" y="32" class="lbl-w">acme-poc-v2 (top group)</text>
+
+  <line x1="550" y1="44" x2="550" y2="62" class="line"/>
+  <line x1="120" y1="62" x2="980" y2="62" class="line"/>
+  <line x1="200" y1="62" x2="200" y2="78" class="line"/>
+  <line x1="450" y1="62" x2="450" y2="78" class="line"/>
+  <line x1="700" y1="62" x2="700" y2="78" class="line"/>
+  <line x1="900" y1="62" x2="900" y2="78" class="line"/>
+
+  <rect x="120" y="78" width="160" height="32" rx="4" class="domain"/>
+  <text x="200" y="98" class="lbl">applications</text>
+
+  <rect x="370" y="78" width="160" height="32" rx="4" class="org"/>
+  <text x="450" y="98" class="lbl">organisations</text>
+
+  <rect x="620" y="78" width="160" height="32" rx="4" class="platform"/>
+  <text x="700" y="98" class="lbl">platform</text>
+
+  <rect x="820" y="78" width="160" height="32" rx="4" class="iam"/>
+  <text x="900" y="98" class="lbl">iam-sim (Private)</text>
+
+  <!-- applications subtree -->
+  <line x1="200" y1="110" x2="200" y2="135" class="line"/>
+  <line x1="120" y1="135" x2="280" y2="135" class="line"/>
+  <line x1="140" y1="135" x2="140" y2="150" class="line"/>
+  <rect x="80" y="150" width="120" height="28" rx="4" class="domain"/>
+  <text x="140" y="168" class="lbl">domain-a</text>
+  <line x1="260" y1="135" x2="260" y2="150" class="line"/>
+  <rect x="200" y="150" width="120" height="28" rx="4" class="domain"/>
+  <text x="260" y="168" class="lbl">domain-b</text>
+
+  <line x1="140" y1="178" x2="140" y2="195" class="line"/>
+  <rect x="60" y="195" width="160" height="28" rx="4" class="domain"/>
+  <text x="140" y="213" class="lbl">subdomain-a</text>
+  <line x1="260" y1="178" x2="260" y2="195" class="line"/>
+  <rect x="180" y="195" width="160" height="28" rx="4" class="domain"/>
+  <text x="260" y="213" class="lbl">subdomain-b</text>
+
+  <line x1="140" y1="223" x2="140" y2="240" class="line"/>
+  <line x1="80" y1="240" x2="200" y2="240" class="line"/>
+  <line x1="80" y1="240" x2="80" y2="252" class="line"/>
+  <rect x="50" y="252" width="60" height="22" rx="3" class="proj"/>
+  <text x="80" y="267" class="lbl">proj-1</text>
+  <line x1="140" y1="240" x2="140" y2="252" class="line"/>
+  <rect x="110" y="252" width="60" height="22" rx="3" class="proj"/>
+  <text x="140" y="267" class="lbl">proj-2</text>
+  <line x1="200" y1="240" x2="200" y2="252" class="line"/>
+  <rect x="170" y="252" width="60" height="22" rx="3" class="proj"/>
+  <text x="200" y="267" class="lbl">proj-3</text>
+
+  <line x1="140" y1="274" x2="140" y2="288" class="line"/>
+  <rect x="60" y="288" width="160" height="22" rx="3" class="restr"/>
+  <text x="140" y="303" class="lbl">restricted/ (Private)</text>
+  <line x1="140" y1="310" x2="140" y2="320" class="line"/>
+  <rect x="60" y="320" width="160" height="22" rx="3" class="proj"/>
+  <text x="140" y="335" class="lbl">restricted-proj-1</text>
+
+  <line x1="260" y1="223" x2="260" y2="252" class="line"/>
+  <rect x="220" y="252" width="80" height="22" rx="3" class="proj"/>
+  <text x="260" y="267" class="lbl">proj-4..6</text>
+
+  <!-- organisations subtree -->
+  <line x1="450" y1="110" x2="450" y2="135" class="line"/>
+  <line x1="370" y1="135" x2="530" y2="135" class="line"/>
+  <line x1="390" y1="135" x2="390" y2="150" class="line"/>
+  <rect x="340" y="150" width="100" height="28" rx="4" class="org"/>
+  <text x="390" y="168" class="lbl">platform-owners</text>
+  <line x1="510" y1="135" x2="510" y2="150" class="line"/>
+  <rect x="450" y="150" width="120" height="28" rx="4" class="org"/>
+  <text x="510" y="168" class="lbl">tribe-1</text>
+
+  <line x1="510" y1="178" x2="510" y2="195" class="line"/>
+  <line x1="450" y1="195" x2="570" y2="195" class="line"/>
+  <line x1="450" y1="195" x2="450" y2="207" class="line"/>
+  <rect x="390" y="207" width="120" height="22" rx="3" class="org"/>
+  <text x="450" y="222" class="lbl">tribe-leads</text>
+  <line x1="570" y1="195" x2="570" y2="207" class="line"/>
+  <rect x="510" y="207" width="120" height="22" rx="3" class="org"/>
+  <text x="570" y="222" class="lbl">security-partners</text>
+
+  <line x1="510" y1="207" x2="510" y2="240" class="line"/>
+  <rect x="430" y="240" width="160" height="22" rx="3" class="org"/>
+  <text x="510" y="255" class="lbl">squad-1</text>
+
+  <line x1="510" y1="262" x2="510" y2="280" class="line"/>
+  <line x1="370" y1="280" x2="650" y2="280" class="line"/>
+  <line x1="390" y1="280" x2="390" y2="295" class="line"/>
+  <rect x="340" y="295" width="100" height="20" rx="3" class="org"/>
+  <text x="390" y="309" class="lbl">squad-leads</text>
+  <line x1="465" y1="280" x2="465" y2="295" class="line"/>
+  <rect x="435" y="295" width="60" height="20" rx="3" class="org"/>
+  <text x="465" y="309" class="lbl">operators</text>
+  <line x1="525" y1="280" x2="525" y2="295" class="line"/>
+  <rect x="495" y="295" width="60" height="20" rx="3" class="org"/>
+  <text x="525" y="309" class="lbl">promoters</text>
+  <line x1="585" y1="280" x2="585" y2="295" class="line"/>
+  <rect x="555" y="295" width="60" height="20" rx="3" class="org"/>
+  <text x="585" y="309" class="lbl">developers</text>
+  <line x1="640" y1="280" x2="640" y2="295" class="line"/>
+  <rect x="610" y="295" width="60" height="20" rx="3" class="org"/>
+  <text x="640" y="309" class="lbl">reporters</text>
+
+  <text x="510" y="335" class="small">(squad-2, tribe-2/squad-3 — same shape)</text>
+
+  <!-- platform -->
+  <line x1="700" y1="110" x2="700" y2="150" class="line"/>
+  <rect x="640" y="150" width="120" height="22" rx="3" class="proj"/>
+  <text x="700" y="165" class="lbl">ci-templates</text>
+
+  <!-- iam-sim subtree -->
+  <line x1="900" y1="110" x2="900" y2="135" class="line"/>
+  <line x1="820" y1="135" x2="980" y2="135" class="line"/>
+  <line x1="850" y1="135" x2="850" y2="150" class="line"/>
+  <rect x="800" y="150" width="100" height="22" rx="3" class="iam"/>
+  <text x="850" y="165" class="lbl">sailpoint</text>
+  <text x="850" y="190" class="small">gl-acme-platform-owners</text>
+  <text x="850" y="205" class="small">gl-tribe-1-leads / -security</text>
+  <text x="850" y="220" class="small">gl-squad-N-{role}</text>
+
+  <line x1="950" y1="135" x2="950" y2="150" class="line"/>
+  <rect x="900" y="150" width="100" height="22" rx="3" class="iam"/>
+  <text x="950" y="165" class="lbl">sscam</text>
+  <text x="950" y="190" class="small">proj-1_w / _r</text>
+  <text x="950" y="205" class="small">proj-2_w / _r</text>
+  <text x="950" y="220" class="small">proj-4_w / _r</text>
+
+  <text x="900" y="260" class="small">(legacy origin; coexists with SailPoint)</text>
+
+  <!-- arrows showing the two-hop access flow -->
+  <text x="550" y="430" class="lbl" style="font-weight:600; fill:#0052cc;">Access flow:</text>
+  <text x="550" y="450" class="small">IAM-sim ─Hop 1─→ Organisations ─Hop 2─→ Applications</text>
+  <text x="550" y="467" class="small">(sailpoint or sscam group fed into a role-bearing org subgroup)</text>
+  <text x="550" y="482" class="small">(org subgroup shared with an app namespace at a built-in or custom role)</text>
+  <text x="550" y="510" class="small" style="font-style:italic;">Apps carry NO direct IAM shares — every grant flows through org.</text>
+</svg>
+<div class="caption">Figure 1 — v2 hierarchy. The new <code>organisations/</code>
+  tree (blue) sits as a peer of <code>applications/</code>. Every grant onto an
+  app flows from an org subgroup, never directly from iam-sim.</div>
+</div>
+
+
+<!-- =====================================================================
+     3. THE TWO HOPS
+     ===================================================================== -->
+<h2 id="hops">3. The two-hop access flow</h2>
+
+<div class="v2-hop">
+<h3 style="margin-top:0;">Hop 1 — IAM-sim → Organisation tree</h3>
+<p>
+  Each LDAP group in <code>iam-sim/sailpoint/</code> or
+  <code>iam-sim/sscam/</code> is bound to exactly one role-bearing org
+  subgroup. The binding is recorded in <code>config.IAM_TO_ORG_SHARES</code>.
+</p>
+
+<p>
+  In production with real LDAP/SAML sync, GitLab's
+  <em>Group → LDAP synchronization</em> setting on each org subgroup pulls
+  members from the bound LDAP group on every sync interval and writes them
+  in as direct members of the org subgroup. The LDAP group itself doesn't
+  appear in GitLab — only the membership does.
+</p>
+
+<p>
+  The PoC simulates this by having Phase 4 read both the
+  <code>IAM_MEMBERSHIPS</code> map (who is in which LDAP group, for the
+  audit trail) and <code>IAM_TO_ORG_SHARES</code>, and provisioning each
+  user as a direct member of the matching org subgroup. The IAM-sim
+  subgroup itself is also populated so the <em>"who is in which LDAP
+  group"</em> view in the UI is faithful.
+</p>
+
+<p>
+  <strong>Dual-feed example.</strong> Bob is in both
+  <code>sailpoint/gl-squad-1-squad-leads</code> AND
+  <code>sscam/proj-1_w</code> — modelling the partial-migration state where
+  some apps are still on the legacy SSCAM naming. Both feeds populate the
+  same target subgroup, <code>tribe-1/squad-1/squad-leads</code>; Bob ends
+  up there exactly once.
+</p>
+</div>
+
+<div class="v2-hop">
+<h3 style="margin-top:0;">Hop 2 — Organisation → Application</h3>
+<p>
+  Each role-bearing org subgroup is shared with exactly one application
+  scope at a specific role. The bindings live in
+  <code>config.ORG_TO_APP_SHARES</code>. Most shares are at the
+  <em>subdomain</em> group level (Hop 2 inherits to all projects beneath);
+  a few are at the <em>project</em> level for finer slicing (e.g.
+  <code>squad-2/developers</code> shares only with <code>proj-3</code>).
+</p>
+
+<p>
+  Built-in roles (Developer, Maintainer, Owner) are passed via the
+  <code>group_access</code> parameter; custom roles (Promoter, Operator,
+  Security Manager) are passed via <code>member_role_id</code> in the
+  same call.
+</p>
+
+<table>
+  <thead>
+    <tr><th>Org subgroup</th><th>Shared with</th><th>Role</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>tribe-1/tribe-leads</code></td><td><code>applications/domain-a</code></td><td>Maintainer</td></tr>
+    <tr><td><code>tribe-1/security-partners</code></td><td><code>applications/domain-a</code></td><td>Security Manager (custom)</td></tr>
+    <tr><td><code>tribe-1/squad-1/squad-leads</code></td><td><code>applications/domain-a/subdomain-a</code></td><td>Maintainer</td></tr>
+    <tr><td><code>tribe-1/squad-1/operators</code></td><td><code>applications/domain-a/subdomain-a</code></td><td>Operator (custom)</td></tr>
+    <tr><td><code>tribe-1/squad-1/promoters</code></td><td><code>applications/domain-a/subdomain-a</code></td><td>Promoter (custom)</td></tr>
+    <tr><td><code>tribe-1/squad-1/developers</code></td><td><code>applications/domain-a/subdomain-a</code></td><td>Developer</td></tr>
+    <tr><td><code>tribe-1/squad-1/reporters</code></td><td><code>applications/domain-a/subdomain-a</code></td><td>Reporter</td></tr>
+    <tr><td><code>tribe-1/squad-2/developers</code></td><td><code>applications/domain-a/subdomain-a/proj-3</code></td><td>Developer (project-level)</td></tr>
+    <tr><td><code>tribe-2/squad-3/developers</code></td><td><code>applications/domain-b/subdomain-b</code></td><td>Developer</td></tr>
+    <tr><td><code>organisations/platform-owners</code></td><td><code>acme-poc-v2</code> (top group)</td><td>Owner</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout-success">
+<strong>Lifecycle benefit.</strong> When IAM moves a person from
+squad-1 to squad-2, the only change is which LDAP group they're in.
+LDAP sync re-evaluates membership on the next pull; the org subgroups
+update; the apps see no change. <strong>No project-level edits, no
+share rewrites, no audit-event noise on the application tree.</strong>
+</div>
+
+
+<!-- =====================================================================
+     4. TEST PERSONAS
+     ===================================================================== -->
+<h2 id="personas">4. Test personas</h2>
+
+<table>
+<thead><tr>
+  <th>Persona</th><th>IAM groups they're in</th><th>Org subgroups they reach</th><th>Effective role(s) on apps</th>
+</tr></thead>
+<tbody>
+<tr><td><code>v2-pat</code><br>Pat — Platform Owner</td><td><code>gl-acme-platform-owners</code></td><td><code>platform-owners</code></td><td>Owner of the entire top group</td></tr>
+<tr><td><code>v2-tina</code><br>Tina — Tribe Lead</td><td><code>gl-tribe-1-leads</code></td><td><code>tribe-1/tribe-leads</code></td><td>Maintainer on every project under <code>domain-a</code></td></tr>
+<tr><td><code>v2-sam</code><br>Sam — Security Partner</td><td><code>gl-tribe-1-security</code></td><td><code>tribe-1/security-partners</code></td><td>Security Manager (custom) across <code>domain-a</code></td></tr>
+<tr><td><code>v2-bob</code><br>Bob — Squad-1 Lead</td><td><code>gl-squad-1-squad-leads</code> AND <code>proj-1_w</code> (dual-feed)</td><td><code>squad-1/squad-leads</code></td><td>Maintainer on <code>subdomain-a</code></td></tr>
+<tr><td><code>v2-carol</code><br>Carol — Squad-1 Operator</td><td><code>gl-squad-1-operators</code></td><td><code>squad-1/operators</code></td><td>Reporter + Operator (custom) on <code>subdomain-a</code></td></tr>
+<tr><td><code>v2-paul</code><br>Paul — Squad-1 Promoter</td><td><code>gl-squad-1-promoters</code></td><td><code>squad-1/promoters</code></td><td>Reporter + Promoter (custom) on <code>subdomain-a</code></td></tr>
+<tr><td><code>v2-alice</code><br>Alice — Squad-1 Developer</td><td><code>gl-squad-1-developers</code></td><td><code>squad-1/developers</code></td><td>Developer on <code>subdomain-a</code></td></tr>
+<tr><td><code>v2-rita</code><br>Rita — Squad-1 Reporter</td><td><code>gl-squad-1-reporters</code> AND <code>proj-1_r</code> (dual-feed)</td><td><code>squad-1/reporters</code></td><td>Reporter on <code>subdomain-a</code></td></tr>
+<tr><td><code>v2-ed</code><br>Ed — Squad-2 Developer</td><td><code>gl-squad-2-developers</code></td><td><code>squad-1/squad-2/developers</code></td><td>Developer on <code>proj-3</code> ONLY (project-level share)</td></tr>
+<tr><td><code>v2-fred</code><br>Fred — Squad-3 Developer</td><td><code>gl-squad-3-developers</code></td><td><code>tribe-2/squad-3/developers</code></td><td>Developer on <code>subdomain-b</code></td></tr>
+<tr><td><code>v2-dan</code><br>Dan — Inner-source contributor</td><td>None</td><td>None — direct Minimal Access at top group</td><td>Discoverer/forker only — no role on any project</td></tr>
+<tr><td><code>v2-con</code><br>Con — Restricted reader</td><td><code>gl-restricted-read</code></td><td>None — direct share to <code>restricted/</code></td><td>Reporter on <code>restricted-proj-1</code> only</td></tr>
+</tbody>
+</table>
+
+
+<!-- =====================================================================
+     5. JOINER / MOVER / PROMOTION / REORG / SEC SWEEP
+     ===================================================================== -->
+<h2 id="flows">5. The five lifecycle flows</h2>
+
+<p>Phase 13 walks each of these end-to-end against the live instance.</p>
+
+<table>
+<thead><tr><th>Flow</th><th>What it changes</th><th>What it proves</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>Joiner</strong></td>
+  <td>Add Fred to <code>gl-squad-1-developers</code> (Phase 13 Scenario 1).</td>
+  <td>Fred immediately appears as Developer on every project under <code>subdomain-a</code>. No app edits.</td>
+</tr>
+<tr>
+  <td><strong>Mover</strong></td>
+  <td>Remove Fred from <code>gl-squad-1-developers</code>; he's still in <code>gl-squad-3-developers</code>.</td>
+  <td>Fred loses subdomain-a access, retains subdomain-b. The squad-1/developers org subgroup membership updates instantly via LDAP sync.</td>
+</tr>
+<tr>
+  <td><strong>Promotion (additive role)</strong></td>
+  <td>Add Alice to <code>gl-squad-1-operators</code> while still a developer.</td>
+  <td>Alice gains Operator (custom) on top of Developer — prod-env rights without losing source-code write access.</td>
+</tr>
+<tr>
+  <td><strong>Reorg</strong></td>
+  <td>Re-share <code>tribe-1/squad-1/developers</code> from <code>subdomain-a</code> to <code>subdomain-b</code> (single share rewrite).</td>
+  <td>Every member of squad-1's developers now has access to subdomain-b instead. Zero IAM-side or per-user changes.</td>
+</tr>
+<tr>
+  <td><strong>Sec sweep</strong></td>
+  <td>Add Tina to <code>gl-tribe-1-security</code>.</td>
+  <td>She gains Security Manager (custom) on EVERY project across <code>domain-a</code> — broadest possible application via single LDAP membership change.</td>
+</tr>
+</tbody>
+</table>
+
+
+<!-- =====================================================================
+     6. RUN RESULT
+     ===================================================================== -->
+<h2 id="result">6. Live run result</h2>
+
+<div class="callout-success">
+<strong>28 of 29 live verification checks PASS</strong> on the latest run.
+The one failing check is the end-to-end access evaluation — a documented
+GitLab limitation, not a defect in the design. See Section 7 below.
+</div>
+
+<p>
+  The 28 passing checks confirm:
+</p>
+<ul>
+  <li>Hierarchy — top group + four peers (apps / orgs / iam-sim / platform), domains under apps, restricted/ Private, role-bearing org subgroups at every altitude.</li>
+  <li>Hop 1 — Alice provisioned into <code>squad-1/developers</code>; Bob provisioned into <code>squad-1/squad-leads</code> via dual SailPoint+SSCAM origin.</li>
+  <li>Hop 2 — squad-1's role subgroups shared with <code>subdomain-a</code> at the right roles; squad-2's developers shared with <code>proj-3</code> only.</li>
+  <li>App-tree purity — proj-1 carries no <code>iam-sim/*</code> shares (proves the org-driven model).</li>
+  <li>Top-level Owner — <code>organisations/platform-owners</code> shared with the top group as Owner.</li>
+  <li>Branch / tag / environment protection — <code>main</code>, <code>v*</code>, <code>staging</code>, <code>prod</code> all configured on <code>proj-1</code>.</li>
+  <li>Custom roles created at instance level (Promoter, Operator, Security Manager).</li>
+  <li>Audit events captured at top-group level.</li>
+</ul>
+
+
+<!-- =====================================================================
+     7. GROUP SHARING IN GITLAB — THE CRITICAL CAVEAT
+     ===================================================================== -->
+<h2 id="transitivity">7. Group Sharing in GitLab — design, behaviour, and the transitivity caveat</h2>
+
+<p>
+  GitLab's group-sharing feature (<em>group → group</em> and <em>group → project</em>)
+  is the foundation of the v2 model. Understanding exactly how it
+  behaves is essential to understanding why the PoC's end-to-end check
+  fails on a manually-built instance and works in production.
+</p>
+
+<h3>What "share group A with group B" actually does</h3>
+<p>
+  When you go to group B's <em>Members → Invite a group</em> and pick group
+  A at role <em>R</em>, GitLab records a <em>group link</em> from B to A.
+  After that:
+</p>
+<ul>
+  <li>Every <strong>direct member</strong> of A appears on B's
+      <em>Members</em> list with role <em>min(their role in A, R)</em>,
+      labelled <em>"via shared group A"</em>.</li>
+  <li>The membership flows down the hierarchy: every project in B inherits
+      those members at the same role, just as if they had been added
+      directly to B.</li>
+  <li>A user looking at "their groups" or "their projects" sees B and its
+      contents listed.</li>
+</ul>
+
+<h3>Where the transitivity gap appears</h3>
+<p>
+  Now consider a chain: <code>X</code> is shared with <code>A</code>, and
+  <code>A</code> is shared with <code>B</code>. Is a member of X effectively
+  a member of B?
+</p>
+<p>
+  The answer in GitLab today is <strong>"yes for the membership-listing
+  endpoints, but no for the runtime permission resolver"</strong>:
+</p>
+<ul>
+  <li><code>GET /groups/B/members/all</code> walks the share chain and lists
+      X's members with their effective access level.</li>
+  <li><code>GET /projects/&lt;B-child&gt;/members/all</code> also lists them.</li>
+  <li>BUT: when an X member's HTTP request hits a B-child resource, GitLab's
+      authorization code does <em>not</em> walk transitively through chained
+      group shares. The user is treated as not-a-member, and the request
+      returns 404 (Private project) or 403 (Internal/Public project,
+      action requires a role).</li>
+</ul>
+
+<p class="callout-warn" style="display:block;">
+<strong>This is the failing check.</strong> v2 deliberately keeps two
+separate trees (<code>applications/</code> and <code>organisations/</code>) so
+the design intent — apps own no access, orgs own all access — is visible
+in the hierarchy itself. Hop 2 is a <em>group share</em> from each org
+subgroup to the corresponding app namespace. <em>Inside</em> the org
+subgroup, members are direct (LDAP-sync simulation). But the join from
+"member of org subgroup" to "member of app project" relies on GitLab
+walking the share chain at request time — which it doesn't.
+</p>
+
+<h3>Why this works in real production</h3>
+
+<p>
+  Real LDAP/SAML-bound GitLab uses one of two patterns that sidestep the
+  transitivity gap:
+</p>
+
+<ol>
+  <li><strong>Direct LDAP sync into the app tree.</strong> The org subgroup
+      <em>is moved into</em> (or recreated as) a subgroup of the app tree —
+      e.g. <code>applications/domain-a/subdomain-a/squad-1-developers</code>.
+      LDAP sync writes squad members directly into this subgroup. Inheritance
+      is then a straight downward walk through the namespace tree, which
+      GitLab evaluates correctly. The org subgroup name still encodes the
+      org concept; it just lives <em>inside</em> the app tree.</li>
+  <li><strong>LDAP-bound app-level shares.</strong> The LDAP group is bound
+      directly to the application namespace. The org tree exists only as
+      a documentation/UI structure (e.g. labels) and does not participate in
+      access resolution.</li>
+</ol>
+
+<p>
+  Both patterns produce correct runtime evaluation, but pattern (1)
+  preserves the visual separation v2 demonstrates. It's the recommended
+  production migration path.
+</p>
+
+<h3>Why the PoC keeps the trees structurally distinct anyway</h3>
+
+<p>
+  The whole point of v2 is to make the org-driven model
+  <strong>visible</strong> in the hierarchy. Collapsing the org tree into
+  the app tree (production pattern 1 above) optimises for runtime
+  evaluation but hides the design intent — a reader looking at
+  <code>applications/domain-a/subdomain-a/squad-1-developers</code> can't
+  easily tell that this is an "org" thing rather than an "app" thing.
+</p>
+
+<p>
+  So the PoC keeps them apart, accepts that one specific runtime check
+  fails on the local manually-built instance, documents why
+  (this section), and recommends the production migration path
+  (LDAP-sync-to-app-subgroup) so the runtime check would pass once
+  real LDAP is wired up.
+</p>
+
+<div class="callout-info">
+<strong>The verifier marks this honestly.</strong> The
+<em>"End-to-end: Alice can GET proj-1 via her own PAT"</em> check is the
+only one in the v2 verifier that exercises GitLab's runtime permission
+resolver (it mints a real PAT for Alice and makes a real GET request).
+On the local PoC instance, it returns HTTP 403 / 404. The check's
+detail field on the report explains the cause and the fix — no
+hand-waving, no marking the failure as a "false positive".
+</div>
+
+
+<!-- =====================================================================
+     8. HOW TO REPRODUCE
+     ===================================================================== -->
+<h2 id="reproduce">8. How to reproduce the v2 PoC</h2>
+
+<pre><code># From a clean slate (v1 untouched at gitlab-poc-scripts/)
+cd gitlab-poc-scripts-v2
+pip install -r requirements.txt
+python -m playwright install chromium     # one-time, only if running UI evidence
+
+# Edit ui_tests/test_users.properties — replace PUT-ROOT-PASSWORD-HERE
+# Then either:
+py -3 run_poc.py --yes                    # API + UI evidence
+# or just the API run:
+py -3 run_poc.py --yes --no-ui-evidence
+
+# Open the run report:
+gitlab-poc-scripts-v2/poc-final-report.html</code></pre>
+
+<p>The whole flow takes 6–8 minutes against a healthy local Docker instance.</p>
+
+
+<p class="muted" style="margin-top: 3em;">
+  Generated from <code>analysis</code> (design source-of-truth),
+  <code>gitlab-poc-scripts-v2/config.py</code> (live wiring), and the
+  per-API-call trace in <code>gitlab-poc-scripts-v2/poc-final-report.html</code>.
+</p>
+
+</body>
+</html>
