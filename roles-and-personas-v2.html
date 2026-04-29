@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>v2 — GitLab Roles &amp; Org-Driven Personas — Consolidated Capability Matrix</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+         max-width: 1500px; margin: 1.5em auto; padding: 0 1.5em;
+         color: #000; background: #fff; line-height: 1.5; }
+  h1 { font-size: 1.7em; border-bottom: 2px solid #0052cc; padding-bottom: 0.3em;
+       color: #172b4d; margin-bottom: 0.4em; }
+  h2 { font-size: 1.25em; margin-top: 2em; color: #172b4d; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.85em; }
+  th, td { border: 1px solid #dfe1e6; padding: 0.4em 0.55em; text-align: left;
+           vertical-align: top; }
+  th { background: #f4f5f7; font-weight: 600; color: #172b4d;
+       position: sticky; top: 0; z-index: 1; }
+  th.action { writing-mode: vertical-rl; transform: rotate(180deg);
+              text-align: left; padding: 0.6em 0.3em; min-width: 22px;
+              max-width: 30px; font-size: 0.78em; line-height: 1.15; height: 220px; }
+  td.persona-cell { font-weight: 600; white-space: nowrap; }
+  td.role-cell { font-family: monospace; font-size: 0.84em; white-space: nowrap; }
+  td.scope-cell { font-size: 0.83em; color: #42526e; }
+  td.action-cell { text-align: center; padding: 0.3em 0.45em; font-weight: 600; }
+  .can    { color: #00875a; }
+  .cannot { color: #de350b; }
+  .partial{ color: #ff991f; }
+  .na     { color: #c1c7d0; }
+  .badge { display: inline-block; padding: 0.05em 0.4em; border-radius: 3px;
+           font-size: 0.78em; font-family: monospace; border: 1px solid #dfe1e6;
+           background: #fff; }
+  .badge-default { background: #deebff; border-color: #0052cc; color: #0747a6; }
+  .badge-custom  { background: #fffae6; border-color: #ff991f; color: #974f0c; }
+  .legend { font-size: 0.85em; color: #42526e; margin: 0.6em 0 1.2em 0;
+            background: #f4f5f7; padding: 0.7em 1em; border-radius: 4px;
+            border-left: 4px solid #0052cc; }
+  .legend span { margin-right: 1.5em; display: inline-block; }
+  .footnotes { font-size: 0.85em; color: #42526e; margin-top: 1.5em; }
+  .footnotes ol { padding-left: 1.4em; }
+  .footnotes li { margin: 0.3em 0; }
+  code { background: #f4f5f7; padding: 0.05em 0.3em; border-radius: 3px;
+         font-size: 0.88em; }
+  .callout-warn { border-left: 4px solid #ff991f; background: #fffae6;
+                  padding: 0.65em 1em; margin: 1em 0; }
+</style>
+</head>
+<body>
+
+<h1>v2 — GitLab Roles &amp; Org-Driven Personas — Consolidated Capability Matrix</h1>
+
+<div class="legend">
+  <span><strong class="can">Y</strong> = action permitted</span>
+  <span><strong class="cannot">N</strong> = action blocked</span>
+  <span><strong class="partial">~</strong> = conditional (see footnote)</span>
+  <span><strong class="na">—</strong> = not applicable / no relationship to project</span>
+  <br>
+  <span style="margin-top:0.4em; display:inline-block;">
+    <span class="badge badge-default">default</span> = built-in GitLab role &nbsp;
+    <span class="badge badge-custom">custom</span> = PoC custom role (Phase 1)
+  </span>
+  <br>
+  <span style="margin-top:0.4em; display:inline-block;">
+    Actions are scoped to <code>applications/domain-a/subdomain-a/proj-1</code> unless noted.
+    Sources: <code>analysis</code> + <code>gitlab-poc-scripts-v2/config.py</code>.
+  </span>
+</div>
+
+<div class="callout-warn">
+<strong>The "effective role(s)" column shows what the design intends.</strong>
+On a self-managed instance without LDAP sync, GitLab's runtime permission
+resolver may not honour the full org-driven chain (see
+<a href="poc-overview-v2.html#transitivity">poc-overview-v2.html section 7</a>
+for the full explanation). The capability matrix below assumes a working
+LDAP-bound production environment, which is the design's deployment target.
+</div>
+
+
+<h2>1. Persona × Action matrix</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th rowspan="2" style="min-width:120px;">Persona</th>
+      <th rowspan="2" style="min-width:140px;">Effective role(s)</th>
+      <th rowspan="2" style="min-width:170px;">Org subgroup they reach (Hop 1+2)</th>
+      <th colspan="3" style="text-align:center;">Repo — read</th>
+      <th colspan="6" style="text-align:center;">Repo — write</th>
+      <th colspan="6" style="text-align:center;">CI / CD</th>
+      <th colspan="2" style="text-align:center;">Security</th>
+      <th colspan="3" style="text-align:center;">Settings</th>
+    </tr>
+    <tr>
+      <th class="action">Clone <code>proj-1</code> (Internal)</th>
+      <th class="action">Clone <code>restricted-proj-1</code> (Private)</th>
+      <th class="action">Clone <code>proj-4</code> (sibling-domain Internal)</th>
+
+      <th class="action">Push to feature branch on <code>proj-1</code></th>
+      <th class="action">Push to protected <code>main</code></th>
+      <th class="action">Open MR targeting <code>main</code></th>
+      <th class="action">Approve someone else's MR</th>
+      <th class="action">Merge to protected <code>main</code></th>
+      <th class="action">Create release tag <code>v*</code></th>
+
+      <th class="action">Read non-protected CI variables</th>
+      <th class="action">View / list CI variables</th>
+      <th class="action">Edit / add CI variables</th>
+      <th class="action">Play <code>deploy_prod</code> manual job</th>
+      <th class="action">Approve pending prod deployment</th>
+      <th class="action">Edit protected branches / envs</th>
+
+      <th class="action">View vulnerability reports</th>
+      <th class="action">Dismiss / waive vulnerability</th>
+
+      <th class="action">Open Settings → General</th>
+      <th class="action">Add / remove project members</th>
+      <th class="action">Read group / project audit events</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- Pat — Platform Owner -->
+    <tr>
+      <td class="persona-cell"><code>v2-pat</code><br><span style="font-weight:normal; color:#5e6c84;">Pat — Platform Owner</span></td>
+      <td class="role-cell"><span class="badge badge-default">Owner</span></td>
+      <td class="scope-cell">organisations/platform-owners → top group as Owner</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N<sup>1</sup></td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N<sup>2</sup></td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+    </tr>
+
+    <!-- Tina — Tribe Lead -->
+    <tr>
+      <td class="persona-cell"><code>v2-tina</code><br><span style="font-weight:normal; color:#5e6c84;">Tina — Tribe Lead</span></td>
+      <td class="role-cell"><span class="badge badge-default">Maintainer</span></td>
+      <td class="scope-cell">tribe-1/tribe-leads → applications/domain-a (whole domain)</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N<sup>1</sup></td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N<sup>2</sup></td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+    </tr>
+
+    <!-- Sam — Security Partner -->
+    <tr>
+      <td class="persona-cell"><code>v2-sam</code><br><span style="font-weight:normal; color:#5e6c84;">Sam — Security Partner</span></td>
+      <td class="role-cell"><span class="badge badge-default">Reporter</span> + <span class="badge badge-custom">Security Mgr</span></td>
+      <td class="scope-cell">tribe-1/security-partners → applications/domain-a</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell can">Y<sup>3</sup></td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+
+    <!-- Bob — Squad-1 Lead -->
+    <tr>
+      <td class="persona-cell"><code>v2-bob</code><br><span style="font-weight:normal; color:#5e6c84;">Bob — Squad-1 Lead</span></td>
+      <td class="role-cell"><span class="badge badge-default">Maintainer</span></td>
+      <td class="scope-cell">squad-1/squad-leads → subdomain-a (DUAL-fed: SailPoint + SSCAM)</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N<sup>1</sup></td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N<sup>2</sup></td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y<sup>4</sup></td><td class="action-cell can">Y</td>
+    </tr>
+
+    <!-- Carol — Squad-1 Operator -->
+    <tr>
+      <td class="persona-cell"><code>v2-carol</code><br><span style="font-weight:normal; color:#5e6c84;">Carol — Squad-1 Operator</span></td>
+      <td class="role-cell"><span class="badge badge-default">Reporter</span> + <span class="badge badge-custom">Operator</span></td>
+      <td class="scope-cell">squad-1/operators → subdomain-a; allowed deployer to prod env</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y<sup>5</sup></td><td class="action-cell cannot">N<sup>6</sup></td><td class="action-cell can">Y<sup>7</sup></td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+
+    <!-- Paul — Squad-1 Promoter -->
+    <tr>
+      <td class="persona-cell"><code>v2-paul</code><br><span style="font-weight:normal; color:#5e6c84;">Paul — Squad-1 Promoter</span></td>
+      <td class="role-cell"><span class="badge badge-default">Reporter</span> + <span class="badge badge-custom">Promoter</span></td>
+      <td class="scope-cell">squad-1/promoters → subdomain-a</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+
+    <!-- Alice — Squad-1 Developer -->
+    <tr>
+      <td class="persona-cell"><code>v2-alice</code><br><span style="font-weight:normal; color:#5e6c84;">Alice — Squad-1 Developer</span></td>
+      <td class="role-cell"><span class="badge badge-default">Developer</span></td>
+      <td class="scope-cell">squad-1/developers → subdomain-a</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+
+    <!-- Rita — Squad-1 Reporter -->
+    <tr>
+      <td class="persona-cell"><code>v2-rita</code><br><span style="font-weight:normal; color:#5e6c84;">Rita — Squad-1 Reporter</span></td>
+      <td class="role-cell"><span class="badge badge-default">Reporter</span></td>
+      <td class="scope-cell">squad-1/reporters → subdomain-a (DUAL-fed: SailPoint + SSCAM)</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+
+    <!-- Ed — Squad-2 Developer (project-level share) -->
+    <tr>
+      <td class="persona-cell"><code>v2-ed</code><br><span style="font-weight:normal; color:#5e6c84;">Ed — Squad-2 Developer</span></td>
+      <td class="role-cell"><span class="badge badge-default">Developer</span></td>
+      <td class="scope-cell">squad-2/developers → proj-3 ONLY (project-level share)</td>
+      <td class="action-cell partial">~<sup>8</sup></td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell partial">~<sup>8</sup></td><td class="action-cell cannot">N</td><td class="action-cell partial">~<sup>8</sup></td><td class="action-cell partial">~<sup>8</sup></td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell partial">~<sup>8</sup></td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+
+    <!-- Fred — Squad-3 Developer (different domain) -->
+    <tr>
+      <td class="persona-cell"><code>v2-fred</code><br><span style="font-weight:normal; color:#5e6c84;">Fred — Squad-3 Developer</span></td>
+      <td class="role-cell"><span class="badge badge-default">Developer</span></td>
+      <td class="scope-cell">tribe-2/squad-3/developers → applications/domain-b/subdomain-b</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell cannot">N<sup>9</sup></td><td class="action-cell cannot">N</td><td class="action-cell cannot">N<sup>9</sup></td><td class="action-cell cannot">N<sup>9</sup></td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N<sup>9</sup></td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+
+    <!-- Dan — Inner-source contributor -->
+    <tr>
+      <td class="persona-cell"><code>v2-dan</code><br><span style="font-weight:normal; color:#5e6c84;">Dan — Inner-source</span></td>
+      <td class="role-cell"><span class="badge badge-default">Minimal Access</span></td>
+      <td class="scope-cell">No squad — direct Minimal Access at top group only</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N</td><td class="action-cell can">Y</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell partial">~<sup>10</sup></td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+
+    <!-- Con — Restricted reader -->
+    <tr>
+      <td class="persona-cell"><code>v2-con</code><br><span style="font-weight:normal; color:#5e6c84;">Con — Restricted reader</span></td>
+      <td class="role-cell"><span class="badge badge-default">Reporter</span></td>
+      <td class="scope-cell">Direct share of gl-restricted-read → restricted/restricted-proj-1 only</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+      <td class="action-cell cannot">N</td><td class="action-cell cannot">N</td><td class="action-cell cannot">N</td>
+    </tr>
+
+    <!-- root -->
+    <tr>
+      <td class="persona-cell"><code>root</code><br><span style="font-weight:normal; color:#5e6c84;">Administrator</span></td>
+      <td class="role-cell"><span class="badge badge-default">Instance Admin</span></td>
+      <td class="scope-cell">Whole instance</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell cannot">N<sup>1</sup></td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+      <td class="action-cell can">Y</td><td class="action-cell can">Y</td><td class="action-cell can">Y</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="footnotes">
+  <strong>Footnotes</strong>
+  <ol>
+    <li>Even Owners and Maintainers can't push directly to <code>main</code> — protected branch rule is "Allowed to push: No one; Allowed to merge: Maintainers". Merging an MR works.</li>
+    <li>Pat / Tina / Bob aren't the prod-env allowed deployer. Carol is the only individually-listed deployer.</li>
+    <li>Sam approves MRs via the <code>admin_merge_request</code> ability — designed for security-sensitive MRs (e.g. <code>/infra/</code> per CODEOWNERS) without granting write access to source code.</li>
+    <li>Maintainer can add members up to Maintainer level. Adding an Owner requires an Owner.</li>
+    <li>Carol plays <code>deploy_prod</code>, but the deployment then transitions to "waiting for approval" because the prod environment requires Bob's approval (two-person rule).</li>
+    <li>GitLab blocks self-approval on a deployment Carol initiated — even if she were on the approver list.</li>
+    <li>Operator's <code>admin_protected_environments</code> ability covers environments. Carol does NOT have <code>admin_protected_branches</code>, so branch rules remain Maintainer-only.</li>
+    <li>Ed's access is project-scoped to <code>proj-3</code> only. He can clone / push to feature branches / open MRs / read CI variables on <code>proj-3</code>, but on <code>proj-1</code> and <code>proj-2</code> he can only read (Internal visibility).</li>
+    <li>Fred is a Developer on <code>domain-b/subdomain-b</code>, NOT on <code>domain-a/subdomain-a</code>. He can read proj-1 (Internal) but cannot push, MR, or run pipelines on it. His write access is on <code>proj-4</code> / <code>proj-5</code> / <code>proj-6</code>.</li>
+    <li>Dan opens MRs from a fork (<code>v2-dan/proj-1</code>), not the upstream. He can't create a feature branch on upstream <code>proj-1</code>.</li>
+  </ol>
+</div>
+
+</body>
+</html>
